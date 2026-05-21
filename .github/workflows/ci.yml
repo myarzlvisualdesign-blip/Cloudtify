@@ -1,0 +1,33 @@
+name: CI — Type Check & Lint
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  typecheck:
+    name: Type Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type check (packages/types)
+        run: cd packages/types && npx tsc --noEmit
+
+      - name: Type check (packages/utils)
+        run: cd packages/utils && npx tsc --noEmit
+
+      - name: Type check (apps/mobile)
+        run: cd apps/mobile && npx tsc --noEmit
+
+      - name: Type check (apps/web)
+        run: cd apps/web && npx tsc --noEmit

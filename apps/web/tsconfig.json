@@ -1,0 +1,19 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "target": "ES2017",
+    "lib": ["dom", "dom.iterable", "esnext"],
+    "jsx": "preserve",
+    "moduleResolution": "Bundler",
+    "paths": {
+      "@/*": ["./*"],
+      "@cloudtify/types": ["../../packages/types/src/index.ts"],
+      "@cloudtify/utils": ["../../packages/utils/src/index.ts"]
+    },
+    "plugins": [{ "name": "next" }],
+    "noUnusedLocals": false,
+    "noUnusedParameters": false
+  },
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
+  "exclude": ["node_modules"]
+}

@@ -1,0 +1,15 @@
+{
+  "name": "@cloudtify/database",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "db:migrate": "supabase db push",
+    "db:seed": "supabase db reset --linked",
+    "db:diff": "supabase db diff",
+    "db:types": "supabase gen types typescript --linked > ../types/src/database.types.ts",
+    "db:reset": "supabase db reset --local"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.48.1"
+  }
+}
