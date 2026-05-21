@@ -1,12 +1,6 @@
 name = "cloudtify-web"
+pages_build_output_dir = "./out"
 compatibility_date = "2025-01-01"
-
-[env.production]
-name = "cloudtify-web-prod"
-
-# Cloudflare Pages deployment
-# Deploy via: wrangler pages deploy ./out
-# Or connect GitHub repo in Cloudflare Dashboard
 
 [vars]
 NEXT_PUBLIC_APP_URL = "https://cloudtify.com"
