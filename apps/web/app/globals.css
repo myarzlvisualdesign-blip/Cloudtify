@@ -4,13 +4,13 @@
 
 @layer base {
   :root {
-    color-scheme: dark;
+    color-scheme: light;
   }
   * {
-    @apply border-white/5;
+    @apply border-[#E2E8F0];
   }
   body {
-    @apply text-white bg-[#0A0F1E];
+    @apply text-[#0F172A] bg-[#EEF2FF] antialiased;
   }
   ::-webkit-scrollbar {
     width: 6px;
@@ -19,6 +19,37 @@
     background: transparent;
   }
   ::-webkit-scrollbar-thumb {
-    @apply bg-white/10 rounded-full;
+    @apply bg-blue-200 rounded-full;
+  }
+}
+
+@layer utilities {
+  .gradient-blue {
+    background: linear-gradient(135deg, #2563EB 0%, #06B6D4 100%);
+  }
+  .gradient-blue-soft {
+    background: linear-gradient(135deg, #EEF2FF 0%, #E0F2FE 100%);
+  }
+  .card {
+    @apply bg-white rounded-3xl shadow-sm border border-[#E2E8F0];
+  }
+  .card-hover {
+    @apply bg-white rounded-3xl shadow-sm border border-[#E2E8F0] transition-all hover:shadow-md hover:border-blue-200;
+  }
+  .btn-primary {
+    background: linear-gradient(135deg, #2563EB 0%, #06B6D4 100%);
+    @apply text-white font-semibold rounded-2xl px-6 py-3 transition-all hover:shadow-lg hover:shadow-blue-500/25 hover:scale-105;
+  }
+  .btn-outline {
+    @apply bg-white text-[#2563EB] font-semibold rounded-2xl px-6 py-3 border-2 border-blue-200 transition-all hover:border-blue-400 hover:shadow-sm;
+  }
+  .tag-active {
+    @apply bg-emerald-50 text-emerald-600 text-xs font-semibold px-3 py-1 rounded-full;
+  }
+  .tag-expired {
+    @apply bg-red-50 text-red-500 text-xs font-semibold px-3 py-1 rounded-full;
+  }
+  .tag-blue {
+    @apply bg-blue-50 text-blue-600 text-xs font-semibold px-3 py-1 rounded-full;
   }
 }

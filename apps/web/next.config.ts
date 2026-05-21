@@ -1,31 +1,26 @@
 import type { NextConfig } from 'next'
+import path from 'path'
 
 const nextConfig: NextConfig = {
-  output: 'export',           // Static export for Cloudflare Pages
+  output: 'export',
   trailingSlash: true,
   images: {
-    unoptimized: true,        // Required for static export
+    unoptimized: true,
     remotePatterns: [
       { protocol: 'https', hostname: '**.cloudtify.com' },
       { protocol: 'https', hostname: '**.supabase.co' },
     ],
   },
-  experimental: {
-    typedRoutes: true,
-  },
-  // Security headers (enforced via Cloudflare, but good to have)
-  async headers() {
-    return [
-      {
-        source: '/:path*',
-        headers: [
-          { key: 'X-Frame-Options', value: 'DENY' },
-          { key: 'X-Content-Type-Options', value: 'nosniff' },
-          { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
-          { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
-        ],
-      },
-    ]
+  // Fix: paksa root workspace ke Cloudtify, bukan /Users/a1
+  outputFileTracingRoot: path.join(__dirname, '../../'),
+  webpack: (config) => {
+    // Pastikan hanya ada SATU instance React di seluruh build
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      react: path.resolve(__dirname, 'node_modules/react'),
+      'react-dom': path.resolve(__dirname, 'node_modules/react-dom'),
+    }
+    return config
   },
 }
 

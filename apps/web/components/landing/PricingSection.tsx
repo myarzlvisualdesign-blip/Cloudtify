@@ -8,13 +8,9 @@ const PLANS = [
     name: 'free' as const,
     label: 'Free',
     storage: '15 GB',
-    features: [
-      'Upload max 50 MB per file',
-      'Berbagi link basic',
-      'Max 3 link berbagi',
-      'Tersedia iklan',
-      'Kecepatan standar',
-    ],
+    emoji: '🌱',
+    color: '#F0FDF4',
+    features: ['Upload max 50 MB/file', 'Max 3 link berbagi', 'Basic link sharing', 'Tersedia iklan', 'Kecepatan standar'],
     cta: 'Mulai Gratis',
     href: '/auth/register',
     highlighted: false,
@@ -23,13 +19,9 @@ const PLANS = [
     name: 'plus' as const,
     label: 'Plus',
     storage: '100 GB',
-    features: [
-      'Upload max 200 MB per file',
-      'Link berbagi dengan password',
-      'Max 10 link berbagi',
-      'Tanpa iklan',
-      'Kecepatan lebih cepat',
-    ],
+    emoji: '⚡',
+    color: '#EFF6FF',
+    features: ['Upload max 200 MB/file', 'Max 10 link berbagi', 'Link dengan password', 'Tanpa iklan', 'Kecepatan lebih cepat'],
     cta: 'Coba Plus',
     href: '/auth/register?plan=plus',
     highlighted: false,
@@ -38,30 +30,20 @@ const PLANS = [
     name: 'pro' as const,
     label: 'Pro',
     storage: '500 GB',
-    features: [
-      'Upload max 500 MB per file',
-      'Link dengan tanggal kadaluarsa',
-      'Max 50 link berbagi',
-      'Tanpa iklan',
-      'Prioritas server',
-      'Statistik link berbagi',
-    ],
+    emoji: '🚀',
+    color: 'white',
+    features: ['Upload max 500 MB/file', 'Max 50 link berbagi', 'Link kadaluarsa custom', 'Tanpa iklan', 'Prioritas server', 'Statistik link berbagi'],
     cta: 'Coba Pro',
     href: '/auth/register?plan=pro',
-    highlighted: true,  // most popular
+    highlighted: true,
   },
   {
     name: 'ultra' as const,
     label: 'Ultra',
     storage: '2 TB',
-    features: [
-      'Upload max 2 GB per file',
-      'Private Vault terenkripsi',
-      'Link berbagi tak terbatas',
-      'Tanpa iklan',
-      'Speed terbaik',
-      'Priority support',
-    ],
+    emoji: '💎',
+    color: '#FEFCE8',
+    features: ['Upload max 2 GB/file', 'Link berbagi tak terbatas', 'Private Vault enkripsi', 'Tanpa iklan', 'Speed tertinggi', 'Priority support'],
     cta: 'Coba Ultra',
     href: '/auth/register?plan=ultra',
     highlighted: false,
@@ -72,79 +54,84 @@ export function PricingSection() {
   const [isYearly, setIsYearly] = useState(false)
 
   return (
-    <section id="pricing" className="px-6 py-24">
+    <section id="pricing" className="px-6 py-20">
       <div className="mx-auto max-w-6xl">
-        {/* Header */}
         <div className="text-center mb-12">
-          <h2 className="text-4xl md:text-5xl font-bold mb-4">
-            Harga yang <span className="text-blue-400">masuk akal</span>
+          <span className="inline-block bg-blue-50 text-blue-600 text-sm font-semibold px-4 py-1.5 rounded-full mb-4">Paket Harga</span>
+          <h2 className="text-3xl md:text-4xl font-bold text-[#0F172A] mb-4">
+            Harga yang <span className="bg-clip-text text-transparent" style={{ backgroundImage: 'linear-gradient(135deg, #2563EB, #06B6D4)' }}>masuk akal</span>
           </h2>
-          <p className="text-white/60 text-lg max-w-xl mx-auto">
-            Tidak ada biaya tersembunyi. Tidak perlu kartu kredit. Bisa bayar pakai GoPay, DANA, OVO, QRIS.
+          <p className="text-[#64748B] text-base max-w-md mx-auto mb-8">
+            Tidak ada biaya tersembunyi. Bayar pakai GoPay, DANA, OVO, QRIS.
           </p>
 
-          {/* Billing toggle */}
-          <div className="inline-flex items-center gap-3 mt-8 bg-[#1E293B] rounded-2xl p-1.5">
+          <div className="inline-flex items-center bg-[#F1F5F9] rounded-2xl p-1.5 gap-1">
             <button
               onClick={() => setIsYearly(false)}
-              className={`px-5 py-2 rounded-xl text-sm font-medium transition-all ${!isYearly ? 'bg-blue-600 text-white' : 'text-white/50 hover:text-white'}`}
+              className={`px-5 py-2 rounded-xl text-sm font-semibold transition-all ${!isYearly ? 'bg-white shadow-sm text-[#0F172A]' : 'text-[#64748B] hover:text-[#0F172A]'}`}
             >
               Bulanan
             </button>
             <button
               onClick={() => setIsYearly(true)}
-              className={`px-5 py-2 rounded-xl text-sm font-medium transition-all ${isYearly ? 'bg-blue-600 text-white' : 'text-white/50 hover:text-white'}`}
+              className={`px-5 py-2 rounded-xl text-sm font-semibold transition-all flex items-center gap-2 ${isYearly ? 'bg-white shadow-sm text-[#0F172A]' : 'text-[#64748B] hover:text-[#0F172A]'}`}
             >
-              Tahunan <span className="text-green-400 text-xs ml-1">Hemat 33%</span>
+              Tahunan
+              <span className="bg-emerald-100 text-emerald-600 text-xs px-2 py-0.5 rounded-full font-bold">-33%</span>
             </button>
           </div>
         </div>
 
-        {/* Plans grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 items-start">
           {PLANS.map((plan) => {
-            const monthlyPrice = PLAN_PRICE_IDR_MONTHLY[plan.name]
-            const yearlyMonthlyPrice = plan.name !== 'free'
-              ? Math.round(PLAN_PRICE_IDR_YEARLY[plan.name] / 12)
-              : 0
-            const displayPrice = isYearly ? yearlyMonthlyPrice : monthlyPrice
+            const monthly = PLAN_PRICE_IDR_MONTHLY[plan.name]
+            const yearlyMonthly = plan.name !== 'free' ? Math.round(PLAN_PRICE_IDR_YEARLY[plan.name] / 12) : 0
+            const displayPrice = isYearly ? yearlyMonthly : monthly
 
             return (
               <div
                 key={plan.name}
-                className={`relative rounded-3xl p-6 flex flex-col ${
+                className={`relative rounded-3xl p-6 flex flex-col transition-all hover:shadow-lg ${
                   plan.highlighted
-                    ? 'bg-gradient-to-b from-blue-600/20 to-purple-600/20 border-2 border-blue-500/50'
-                    : 'bg-[#0F172A] border border-white/5'
+                    ? 'border-2 shadow-xl shadow-blue-500/15'
+                    : 'border border-[#E2E8F0]'
                 }`}
+                style={{
+                  background: plan.highlighted ? 'linear-gradient(160deg, #2563EB 0%, #0EA5E9 60%, #06B6D4 100%)' : plan.color,
+                  borderColor: plan.highlighted ? '#2563EB' : undefined,
+                }}
               >
                 {plan.highlighted && (
-                  <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-blue-500 text-white text-xs font-bold px-4 py-1 rounded-full">
-                    PALING POPULER
+                  <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-gradient-to-r from-amber-400 to-orange-400 text-white text-xs font-bold px-4 py-1.5 rounded-full shadow-md whitespace-nowrap">
+                    ⭐ PALING POPULER
                   </div>
                 )}
 
-                <div className="mb-6">
-                  <div className="text-white/60 text-sm font-medium uppercase tracking-wider mb-1">
+                <div className="mb-5">
+                  <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-2xl mb-3 ${plan.highlighted ? 'bg-white/20' : 'bg-white'}`}>
+                    {plan.emoji}
+                  </div>
+                  <div className={`text-xs font-bold uppercase tracking-wider mb-1 ${plan.highlighted ? 'text-blue-100' : 'text-[#94A3B8]'}`}>
                     {plan.label}
                   </div>
-                  <div className="text-4xl font-bold text-white mb-0.5">
+                  <div className={`text-3xl font-bold mb-0.5 ${plan.highlighted ? 'text-white' : 'text-[#0F172A]'}`}>
                     {displayPrice === 0 ? 'Gratis' : formatIDR(displayPrice)}
-                    {displayPrice > 0 && <span className="text-white/40 text-lg font-normal">/bln</span>}
+                    {displayPrice > 0 && <span className={`text-base font-normal ml-1 ${plan.highlighted ? 'text-blue-100' : 'text-[#94A3B8]'}`}>/bln</span>}
                   </div>
                   {isYearly && plan.name !== 'free' && (
-                    <div className="text-green-400 text-sm">
-                      Dibayar tahunan ({formatIDR(PLAN_PRICE_IDR_YEARLY[plan.name])}/thn)
+                    <div className={`text-xs ${plan.highlighted ? 'text-blue-100' : 'text-emerald-600'}`}>
+                      Hemat {formatIDR(PLAN_PRICE_IDR_MONTHLY[plan.name] * 12 - PLAN_PRICE_IDR_YEARLY[plan.name])}/thn
                     </div>
                   )}
-                  <div className="text-2xl font-bold text-blue-400 mt-3">{plan.storage}</div>
-                  <div className="text-white/40 text-sm">storage</div>
+                  <div className={`text-xl font-bold mt-3 ${plan.highlighted ? 'text-white' : 'text-blue-600'}`}>
+                    {plan.storage} <span className={`text-sm font-normal ${plan.highlighted ? 'text-blue-100' : 'text-[#94A3B8]'}`}>storage</span>
+                  </div>
                 </div>
 
-                <ul className="space-y-2 flex-1 mb-6">
+                <ul className="space-y-2.5 flex-1 mb-6">
                   {plan.features.map((feat) => (
-                    <li key={feat} className="flex items-start gap-2 text-sm text-white/70">
-                      <span className="text-green-400 mt-0.5 flex-shrink-0">✓</span>
+                    <li key={feat} className={`flex items-start gap-2 text-sm ${plan.highlighted ? 'text-blue-50' : 'text-[#64748B]'}`}>
+                      <span className={`flex-shrink-0 mt-0.5 ${plan.highlighted ? 'text-cyan-200' : 'text-emerald-500'}`}>✓</span>
                       {feat}
                     </li>
                   ))}
@@ -152,11 +139,12 @@ export function PricingSection() {
 
                 <a
                   href={plan.href}
-                  className={`w-full text-center rounded-xl py-3 font-semibold text-sm transition-all ${
+                  className={`w-full text-center rounded-2xl py-3 font-bold text-sm transition-all hover:scale-105 ${
                     plan.highlighted
-                      ? 'bg-blue-600 hover:bg-blue-500 text-white'
-                      : 'bg-[#1E293B] hover:bg-[#263452] text-white/80 hover:text-white border border-white/10'
+                      ? 'bg-white text-blue-600 hover:shadow-lg'
+                      : 'text-white hover:shadow-md'
                   }`}
+                  style={!plan.highlighted ? { background: 'linear-gradient(135deg, #2563EB, #06B6D4)' } : undefined}
                 >
                   {plan.cta}
                 </a>
@@ -165,20 +153,14 @@ export function PricingSection() {
           })}
         </div>
 
-        {/* Payment methods */}
         <div className="text-center mt-10">
-          <p className="text-white/40 text-sm mb-4">Metode pembayaran yang tersedia</p>
-          <div className="flex flex-wrap justify-center gap-3">
-            {['GoPay', 'DANA', 'OVO', 'ShopeePay', 'QRIS', 'Transfer Bank', 'Virtual Account', 'Kartu Kredit'].map(
-              (method) => (
-                <span
-                  key={method}
-                  className="px-3 py-1.5 rounded-lg bg-[#1E293B] text-white/60 text-xs border border-white/5"
-                >
-                  {method}
-                </span>
-              )
-            )}
+          <p className="text-[#94A3B8] text-sm mb-4">Metode pembayaran tersedia</p>
+          <div className="flex flex-wrap justify-center gap-2">
+            {['GoPay', 'DANA', 'OVO', 'ShopeePay', 'QRIS', 'BCA VA', 'Mandiri VA', 'Kartu Kredit'].map((m) => (
+              <span key={m} className="px-3 py-1.5 rounded-xl bg-white border border-[#E2E8F0] text-[#64748B] text-xs font-medium shadow-sm">
+                {m}
+              </span>
+            ))}
           </div>
         </div>
       </div>

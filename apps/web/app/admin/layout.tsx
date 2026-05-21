@@ -1,4 +1,6 @@
+'use client'
 import Link from 'next/link'
+import { useEffect, useState } from 'react'
 
 const ADMIN_NAV = [
   { label: 'Dashboard', href: '/admin/dashboard', icon: '📊' },
@@ -10,42 +12,88 @@ const ADMIN_NAV = [
 ]
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
+  const [pathname, setPathname] = useState('')
+  useEffect(() => { setPathname(window.location.pathname) }, [])
+
+  const activeLabel = ADMIN_NAV.find(n => pathname.startsWith(n.href))?.label ?? 'Admin'
+
   return (
-    <div className="min-h-screen bg-[#060B14] flex">
-      {/* Sidebar */}
-      <aside className="w-64 border-r border-white/5 flex flex-col">
-        <div className="h-16 flex items-center px-6 border-b border-white/5">
-          <span className="text-xl font-bold text-white">
-            ☁️ <span className="text-blue-400">Admin</span>
-          </span>
+    <div className="min-h-screen bg-[#EEF2FF] flex">
+      {/* Sidebar desktop */}
+      <aside className="hidden md:flex w-64 flex-col fixed left-0 top-0 bottom-0 bg-white border-r border-[#E2E8F0] shadow-sm">
+        <div className="h-16 flex items-center px-6 border-b border-[#E2E8F0]">
+          <div className="flex items-center gap-2 font-bold text-xl">
+            <div className="w-8 h-8 rounded-xl flex items-center justify-center text-white text-sm" style={{ background: 'linear-gradient(135deg, #2563EB, #06B6D4)' }}>
+              ☁️
+            </div>
+            <span className="text-[#0F172A]">Cloud<span className="text-blue-500">Admin</span></span>
+          </div>
         </div>
-        <nav className="flex-1 p-4 space-y-1">
-          {ADMIN_NAV.map((item) => (
-            <Link
-              key={item.label}
-              href={item.href}
-              className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-white/60 hover:text-white hover:bg-white/5 transition-all text-sm"
-            >
-              <span>{item.icon}</span>
-              <span>{item.label}</span>
-            </Link>
-          ))}
+
+        <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
+          {ADMIN_NAV.map((item) => {
+            const active = pathname.startsWith(item.href)
+            return (
+              <Link
+                key={item.label}
+                href={item.href}
+                className={`flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-medium transition-all ${
+                  active ? 'text-white shadow-sm' : 'text-[#64748B] hover:text-[#0F172A] hover:bg-[#F1F5F9]'
+                }`}
+                style={active ? { background: 'linear-gradient(135deg, #2563EB, #06B6D4)' } : undefined}
+              >
+                <span className="text-base">{item.icon}</span>
+                <span>{item.label}</span>
+              </Link>
+            )
+          })}
         </nav>
-        <div className="p-4 border-t border-white/5">
-          <div className="text-white/30 text-xs text-center">Cloudtify Admin v1.0</div>
+
+        <div className="p-4 border-t border-[#E2E8F0]">
+          <Link href="/" className="flex items-center gap-2 px-4 py-2 rounded-2xl text-[#94A3B8] hover:text-[#64748B] text-xs hover:bg-[#F1F5F9] transition-colors">
+            <span>🏠</span>
+            <span>Kembali ke Website</span>
+          </Link>
         </div>
       </aside>
 
       {/* Main */}
-      <main className="flex-1 overflow-auto">
-        <div className="h-16 border-b border-white/5 flex items-center justify-end px-6 gap-4">
-          <span className="text-white/50 text-sm">Admin</span>
-          <div className="w-8 h-8 rounded-full bg-blue-600/30 border border-blue-500/30 flex items-center justify-center text-sm">
-            👤
+      <div className="flex-1 md:ml-64 flex flex-col min-h-screen">
+        {/* Top bar */}
+        <header className="h-16 bg-white border-b border-[#E2E8F0] flex items-center justify-between px-6 sticky top-0 z-10 shadow-sm">
+          <h1 className="text-[#0F172A] font-bold text-base">{activeLabel}</h1>
+          <div className="flex items-center gap-3">
+            <button className="w-9 h-9 rounded-xl bg-[#F1F5F9] flex items-center justify-center text-base hover:bg-[#EFF6FF] transition-colors">
+              🔔
+            </button>
+            <div className="w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-sm" style={{ background: 'linear-gradient(135deg, #2563EB, #06B6D4)' }}>
+              A
+            </div>
           </div>
+        </header>
+
+        {/* Mobile nav */}
+        <div className="md:hidden flex bg-white border-b border-[#E2E8F0] overflow-x-auto px-4 py-2 gap-2 flex-shrink-0">
+          {ADMIN_NAV.map((item) => {
+            const active = pathname.startsWith(item.href)
+            return (
+              <Link
+                key={item.label}
+                href={item.href}
+                className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium transition-all ${
+                  active ? 'text-white' : 'text-[#64748B] bg-[#F1F5F9]'
+                }`}
+                style={active ? { background: 'linear-gradient(135deg, #2563EB, #06B6D4)' } : undefined}
+              >
+                <span>{item.icon}</span>
+                <span>{item.label}</span>
+              </Link>
+            )
+          })}
         </div>
-        <div className="p-6">{children}</div>
-      </main>
+
+        <main className="flex-1 p-6">{children}</main>
+      </div>
     </div>
   )
 }
