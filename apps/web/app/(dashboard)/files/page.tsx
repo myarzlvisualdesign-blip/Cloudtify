@@ -1,8 +1,10 @@
 'use client'
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { formatBytes, formatRelativeDate } from '@cloudtify/utils'
 import { supabase } from '../../../lib/supabase/client'
 import { useUser } from '../../../lib/auth'
+
+const MAX_BYTES = 52428800 // 50 MB (bucket cap)
 
 /* ── SVG icons ─────────────────────────────────────────────────────── */
 const si = { width: 16, height: 16, viewBox: '0 0 24 24', fill: 'none', strokeWidth: 1.75, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const }
@@ -55,22 +57,63 @@ export default function FilesPage() {
   const [sharedIds, setSharedIds] = useState<Set<string>>(new Set())
   const [usedBytes, setUsedBytes] = useState(0)
   const [loading, setLoading] = useState(true)
+  const [uploading, setUploading] = useState(false)
+  const [uploadMsg, setUploadMsg] = useState('')
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
-  useEffect(() => {
+  const loadData = useCallback(async () => {
     if (!user) return
-    Promise.all([
+    const [f, fo, sh, su] = await Promise.all([
       supabase.from('files').select('id, name, size_bytes, mime_type, folder_id, created_at').eq('user_id', user.id).eq('is_deleted', false).order('created_at', { ascending: false }).limit(200),
       supabase.from('folders').select('id, name').eq('user_id', user.id).eq('is_deleted', false).order('created_at', { ascending: false }),
       supabase.from('shares').select('file_id').eq('user_id', user.id).eq('status', 'active'),
       supabase.from('storage_usage').select('used_bytes').eq('user_id', user.id).maybeSingle(),
-    ]).then(([f, fo, sh, su]) => {
-      setFiles((f.data ?? []) as FileRow[])
-      setFolders((fo.data ?? []) as FolderRow[])
-      setSharedIds(new Set(((sh.data ?? []) as { file_id: string }[]).map((s) => s.file_id)))
-      setUsedBytes((su.data?.used_bytes ?? 0) as number)
-      setLoading(false)
-    }).catch(() => setLoading(false))
+    ])
+    setFiles((f.data ?? []) as FileRow[])
+    setFolders((fo.data ?? []) as FolderRow[])
+    setSharedIds(new Set(((sh.data ?? []) as { file_id: string }[]).map((s) => s.file_id)))
+    setUsedBytes((su.data?.used_bytes ?? 0) as number)
+    setLoading(false)
   }, [user])
+
+  useEffect(() => {
+    if (user) loadData().catch(() => setLoading(false))
+  }, [user, loadData])
+
+  async function handleFiles(list: FileList | null) {
+    if (!list || !user) return
+    setUploading(true)
+    let failed = 0
+    for (const file of Array.from(list)) {
+      if (file.size > MAX_BYTES) {
+        setUploadMsg(`"${file.name}" lebih dari 50 MB — dilewati`)
+        failed++
+        continue
+      }
+      const safe = file.name.replace(/[^\w.\-]+/g, '_')
+      const path = `${user.id}/${Date.now()}_${safe}`
+      const { error: upErr } = await supabase.storage.from('files').upload(path, file, {
+        contentType: file.type || 'application/octet-stream',
+        upsert: false,
+      })
+      if (upErr) { failed++; setUploadMsg('Gagal upload: ' + upErr.message); continue }
+      const { error: insErr } = await supabase.from('files').insert({
+        user_id: user.id,
+        name: file.name,
+        original_name: file.name,
+        mime_type: file.type || 'application/octet-stream',
+        size_bytes: file.size,
+        r2_key: path,
+        r2_bucket: 'files',
+        visibility: 'private',
+      })
+      if (insErr) { failed++; setUploadMsg('Gagal simpan: ' + insErr.message) }
+    }
+    await loadData()
+    setUploading(false)
+    if (failed === 0) setUploadMsg('')
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
 
   const folderCounts = useMemo(() => {
     const m = new Map<string, number>()
@@ -90,10 +133,19 @@ export default function FilesPage() {
           <h1 className="font-display font-bold text-[#141110] text-xl tracking-tight">File Saya</h1>
           <p className="text-[#A8A29E] text-sm mt-0.5">{loading ? 'Memuat…' : `${files.length} file · ${formatBytes(usedBytes)} digunakan`}</p>
         </div>
-        <button className="flex items-center gap-2 text-white text-sm font-semibold px-4 py-2.5 rounded-xl hover:opacity-90 hover:-translate-y-px hover:shadow-lg hover:shadow-[#1A56DB]/20 transition-all duration-200 flex-shrink-0" style={{ background: 'linear-gradient(135deg, #1A56DB, #2B7FD4)' }}>
-          <IcoUpload /> Upload
+        <input ref={fileInputRef} type="file" multiple className="hidden" onChange={(e) => handleFiles(e.target.files)} />
+        <button onClick={() => fileInputRef.current?.click()} disabled={uploading} className="flex items-center gap-2 text-white text-sm font-semibold px-4 py-2.5 rounded-xl hover:opacity-90 hover:-translate-y-px hover:shadow-lg hover:shadow-[#1A56DB]/20 transition-all duration-200 flex-shrink-0 disabled:opacity-60 disabled:hover:translate-y-0" style={{ background: 'linear-gradient(135deg, #1A56DB, #2B7FD4)' }}>
+          {uploading ? (
+            <><svg className="animate-spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10" strokeOpacity="0.25" /><path d="M12 2a10 10 0 0 1 10 10" /></svg> Mengupload…</>
+          ) : (
+            <><IcoUpload /> Upload</>
+          )}
         </button>
       </div>
+
+      {uploadMsg && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-xs text-amber-700 font-medium">{uploadMsg}</div>
+      )}
 
       <div className="relative">
         <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[#A8A29E]"><IcoSearch /></span>
@@ -137,7 +189,10 @@ export default function FilesPage() {
         <div className="bg-white border border-[#E5E2DD] rounded-2xl py-16 text-center">
           <div className="w-14 h-14 rounded-2xl bg-[#EBF0FF] flex items-center justify-center mx-auto mb-4 text-[#1A56DB]"><IcoUpload /></div>
           <p className="text-[#141110] text-sm font-semibold mb-1">Belum ada file</p>
-          <p className="text-[#A8A29E] text-xs">File yang kamu upload akan muncul di sini.</p>
+          <p className="text-[#A8A29E] text-xs mb-5">File yang kamu upload akan muncul di sini.</p>
+          <button onClick={() => fileInputRef.current?.click()} disabled={uploading} className="inline-flex items-center gap-2 text-white text-sm font-semibold px-5 py-2.5 rounded-xl hover:opacity-90 transition-all disabled:opacity-60" style={{ background: 'linear-gradient(135deg, #1A56DB, #2B7FD4)' }}>
+            <IcoUpload /> {uploading ? 'Mengupload…' : 'Upload File'}
+          </button>
         </div>
       ) : view === 'list' ? (
         <div className="bg-white border border-[#E5E2DD] rounded-2xl overflow-hidden">
