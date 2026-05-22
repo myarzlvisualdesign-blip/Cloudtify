@@ -18,6 +18,8 @@ function IcoSearch() { return <svg {...si} stroke="currentColor"><circle cx="11"
 function IcoUpload() { return <svg {...si} stroke="currentColor"><polyline points="16 16 12 12 8 16" /><line x1="12" y1="12" x2="12" y2="21" /><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3" /></svg> }
 function IcoLink() { return <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" /><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" /></svg> }
 function IcoMore() { return <svg {...si} stroke="currentColor"><circle cx="12" cy="5" r="1" /><circle cx="12" cy="12" r="1" /><circle cx="12" cy="19" r="1" /></svg> }
+function IcoDownload2() { return <svg {...si} stroke="currentColor"><path d="M21 15v3a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3v-3" /><polyline points="7.5 11 12 15.5 16.5 11" /><line x1="12" y1="15.5" x2="12" y2="3" /></svg> }
+function IcoTrash() { return <svg {...si} stroke="currentColor"><polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" /></svg> }
 function IcoGrid() { return <svg {...si} stroke="currentColor"><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /></svg> }
 function IcoList() { return <svg {...si} stroke="currentColor"><line x1="8" y1="6" x2="21" y2="6" /><line x1="8" y1="12" x2="21" y2="12" /><line x1="8" y1="18" x2="21" y2="18" /><line x1="3" y1="6" x2="3.01" y2="6" /><line x1="3" y1="12" x2="3.01" y2="12" /><line x1="3" y1="18" x2="3.01" y2="18" /></svg> }
 
@@ -44,7 +46,7 @@ const FILTERS: [string, string][] = [
   ['all', 'Semua'], ['image', 'Foto'], ['video', 'Video'], ['document', 'Dokumen'], ['archive', 'Arsip'],
 ]
 
-interface FileRow { id: string; name: string; size_bytes: number; mime_type: string; folder_id: string | null; created_at: string }
+interface FileRow { id: string; name: string; size_bytes: number; mime_type: string; folder_id: string | null; created_at: string; r2_key: string; r2_bucket: string | null }
 interface FolderRow { id: string; name: string }
 
 export default function FilesPage() {
@@ -60,12 +62,29 @@ export default function FilesPage() {
   const [uploading, setUploading] = useState(false)
   const [uploadMsg, setUploadMsg] = useState('')
   const [dragging, setDragging] = useState(false)
+  const [menuFor, setMenuFor] = useState<string | null>(null)
+  const [busyId, setBusyId] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  async function downloadFile(f: FileRow) {
+    setMenuFor(null)
+    const { data } = await supabase.storage.from(f.r2_bucket || 'files').createSignedUrl(f.r2_key, 120, { download: f.name })
+    if (data?.signedUrl) window.open(data.signedUrl, '_blank')
+  }
+
+  async function deleteFile(f: FileRow) {
+    setMenuFor(null)
+    setBusyId(f.id)
+    // Soft-delete → moves to recycle bin (restorable 30 days); storage_usage re-syncs via trigger.
+    await supabase.from('files').update({ is_deleted: true, deleted_at: new Date().toISOString() }).eq('id', f.id)
+    setBusyId(null)
+    await loadData()
+  }
 
   const loadData = useCallback(async () => {
     if (!user) return
     const [f, fo, sh, su] = await Promise.all([
-      supabase.from('files').select('id, name, size_bytes, mime_type, folder_id, created_at').eq('user_id', user.id).eq('is_deleted', false).order('created_at', { ascending: false }).limit(200),
+      supabase.from('files').select('id, name, size_bytes, mime_type, folder_id, created_at, r2_key, r2_bucket').eq('user_id', user.id).eq('is_deleted', false).order('created_at', { ascending: false }).limit(200),
       supabase.from('folders').select('id, name').eq('user_id', user.id).eq('is_deleted', false).order('created_at', { ascending: false }),
       supabase.from('shares').select('file_id').eq('user_id', user.id).eq('status', 'active'),
       supabase.from('storage_usage').select('used_bytes').eq('user_id', user.id).maybeSingle(),
@@ -217,15 +236,26 @@ export default function FilesPage() {
           ) : filtered.map((file, i) => {
             const { Icon: IconCmp, accent, bg } = FILE_TYPE_MAP[catOf(file.mime_type)]
             return (
-              <div key={file.id} className={`flex items-center gap-3.5 px-5 py-3.5 cursor-pointer hover:bg-[#FAFAF8] transition-colors ${i < filtered.length - 1 ? 'border-b border-[#F2F0ED]' : ''}`}>
+              <div key={file.id} onClick={() => downloadFile(file)} className={`flex items-center gap-3.5 px-5 py-3.5 cursor-pointer hover:bg-[#FAFAF8] transition-colors ${i < filtered.length - 1 ? 'border-b border-[#F2F0ED]' : ''} ${busyId === file.id ? 'opacity-50' : ''}`}>
                 <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: bg, color: accent }}><IconCmp /></div>
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-[#141110] text-sm truncate">{file.name}</p>
                   <p className="text-[#A8A29E] text-xs mt-0.5">{formatBytes(file.size_bytes)} · {formatRelativeDate(file.created_at)}</p>
                 </div>
-                <div className="flex items-center gap-2 flex-shrink-0">
+                <div className="flex items-center gap-2 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
                   {sharedIds.has(file.id) && <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[#EBF0FF] text-[#1A56DB]"><IcoLink /> Dibagikan</span>}
-                  <button className="text-[#D4CFC9] hover:text-[#6B6560] transition-colors p-1"><IcoMore /></button>
+                  <div className="relative">
+                    <button onClick={() => setMenuFor(menuFor === file.id ? null : file.id)} className="text-[#A8A29E] hover:text-[#141110] hover:bg-[#F2F0ED] rounded-lg p-1.5 transition-colors"><IcoMore /></button>
+                    {menuFor === file.id && (
+                      <>
+                        <div className="fixed inset-0 z-10" onClick={() => setMenuFor(null)} />
+                        <div className="absolute right-0 top-9 z-20 w-40 bg-white border border-[#E5E2DD] rounded-xl shadow-[0_8px_28px_rgba(20,17,16,0.12)] py-1.5 overflow-hidden">
+                          <button onClick={() => downloadFile(file)} className="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-[#141110] hover:bg-[#FAFAF8] transition-colors"><IcoDownload2 /> Download</button>
+                          <button onClick={() => deleteFile(file)} className="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-[#DC2626] hover:bg-red-50 transition-colors"><IcoTrash /> Hapus</button>
+                        </div>
+                      </>
+                    )}
+                  </div>
                 </div>
               </div>
             )
@@ -236,7 +266,7 @@ export default function FilesPage() {
           {filtered.map((file) => {
             const { Icon: IconCmp, accent, bg } = FILE_TYPE_MAP[catOf(file.mime_type)]
             return (
-              <button key={file.id} className="bg-white border border-[#E5E2DD] rounded-xl p-4 text-left cursor-pointer hover:border-[#C2D0F8] hover:shadow-[0_4px_16px_rgba(26,86,219,0.08)] transition-all duration-200">
+              <button key={file.id} onClick={() => downloadFile(file)} className={`bg-white border border-[#E5E2DD] rounded-xl p-4 text-left cursor-pointer hover:border-[#C2D0F8] hover:shadow-[0_4px_16px_rgba(26,86,219,0.08)] transition-all duration-200 ${busyId === file.id ? 'opacity-50' : ''}`}>
                 <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-3" style={{ background: bg, color: accent }}><IconCmp /></div>
                 <p className="font-medium text-[#141110] text-xs truncate">{file.name}</p>
                 <p className="text-[#A8A29E] text-[10px] mt-1">{formatBytes(file.size_bytes)}</p>
