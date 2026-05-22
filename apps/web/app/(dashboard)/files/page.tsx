@@ -64,6 +64,8 @@ export default function FilesPage() {
   const [dragging, setDragging] = useState(false)
   const [menuFor, setMenuFor] = useState<string | null>(null)
   const [busyId, setBusyId] = useState<string | null>(null)
+  const [newFolder, setNewFolder] = useState('')
+  const [showFolderInput, setShowFolderInput] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   async function downloadFile(f: FileRow) {
@@ -78,6 +80,15 @@ export default function FilesPage() {
     // Soft-delete → moves to recycle bin (restorable 30 days); storage_usage re-syncs via trigger.
     await supabase.from('files').update({ is_deleted: true, deleted_at: new Date().toISOString() }).eq('id', f.id)
     setBusyId(null)
+    await loadData()
+  }
+
+  async function createFolder() {
+    const name = newFolder.trim()
+    if (!name || !user) return
+    await supabase.from('folders').insert({ user_id: user.id, name })
+    setNewFolder('')
+    setShowFolderInput(false)
     await loadData()
   }
 
@@ -187,23 +198,31 @@ export default function FilesPage() {
         <input type="text" placeholder="Cari file…" value={search} onChange={(e) => setSearch(e.target.value)} className="w-full bg-white border border-[#E5E2DD] rounded-xl pl-10 pr-4 py-3 text-sm text-[#141110] placeholder-[#C2BDB8] focus:outline-none focus:border-[#1A56DB]/50 focus:ring-2 focus:ring-[#1A56DB]/10 transition-all" />
       </div>
 
-      {folders.length > 0 && (
-        <div>
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="font-display font-semibold text-[#141110] text-sm">Folder</h2>
-            <button className="text-[#1A56DB] text-xs font-semibold hover:opacity-75 transition-opacity">+ Folder Baru</button>
+      <div>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="font-display font-semibold text-[#141110] text-sm">Folder</h2>
+          <button onClick={() => setShowFolderInput((v) => !v)} className="text-[#1A56DB] text-xs font-semibold hover:opacity-75 transition-opacity">+ Folder Baru</button>
+        </div>
+        {showFolderInput && (
+          <div className="flex gap-2 mb-3">
+            <input autoFocus value={newFolder} onChange={(e) => setNewFolder(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') createFolder(); if (e.key === 'Escape') setShowFolderInput(false) }} placeholder="Nama folder…" className="flex-1 bg-white border border-[#E5E2DD] rounded-xl px-4 py-2.5 text-sm text-[#141110] placeholder-[#C2BDB8] focus:outline-none focus:border-[#1A56DB]/50 focus:ring-2 focus:ring-[#1A56DB]/10" />
+            <button onClick={createFolder} className="text-white text-sm font-semibold px-4 py-2.5 rounded-xl whitespace-nowrap" style={{ background: 'linear-gradient(135deg, #1A56DB, #2B7FD4)' }}>Buat</button>
           </div>
-          <div className="grid grid-cols-3 gap-3">
-            {folders.slice(0, 3).map((folder) => (
-              <button key={folder.id} className="bg-white border border-[#E5E2DD] rounded-xl p-4 text-left hover:border-[#C2D0F8] hover:shadow-[0_4px_16px_rgba(26,86,219,0.08)] transition-all duration-200 group">
+        )}
+        {folders.length > 0 ? (
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            {folders.slice(0, 6).map((folder) => (
+              <div key={folder.id} className="bg-white border border-[#E5E2DD] rounded-xl p-4 text-left hover:border-[#C2D0F8] hover:shadow-[0_4px_16px_rgba(26,86,219,0.08)] transition-all duration-200 group cursor-pointer">
                 <div className="text-[#1A56DB] mb-3 opacity-70 group-hover:opacity-100 transition-opacity"><IcoFolder /></div>
                 <p className="font-display font-semibold text-[#141110] text-xs leading-snug truncate">{folder.name}</p>
                 <p className="text-[#A8A29E] text-[10px] mt-1">{folderCounts.get(folder.id) ?? 0} file</p>
-              </button>
+              </div>
             ))}
           </div>
-        </div>
-      )}
+        ) : (
+          !showFolderInput && <p className="text-[#A8A29E] text-xs">Belum ada folder. Buat folder pertama untuk merapikan file.</p>
+        )}
+      </div>
 
       <div className="flex items-center justify-between gap-3">
         <div className="flex gap-1.5 overflow-x-auto pb-1 flex-1">
