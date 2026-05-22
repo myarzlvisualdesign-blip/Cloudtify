@@ -152,8 +152,8 @@ export default function RegisterPage() {
           <form onSubmit={handleSubmit} className="space-y-4">
             {step === 1 && (
               <>
-                <Field label="Nama Lengkap" icon={<Icon.users size={16} />} placeholder="Nama kamu" value={form.name} onChange={(e) => set('name', e.target.value)} required />
-                <Field label="Email" type="email" icon={<Icon.file size={16} />} placeholder="nama@email.com" value={form.email} onChange={(e) => set('email', e.target.value)} required />
+                <Field label="Nama Lengkap" icon={<Icon.user size={16} />} placeholder="Nama kamu" value={form.name} onChange={(e) => set('name', e.target.value)} required />
+                <Field label="Email" type="email" icon={<Icon.mail size={16} />} placeholder="nama@email.com" value={form.email} onChange={(e) => set('email', e.target.value)} required />
                 <Field label="Kode Referral (opsional)" icon={<Icon.share size={16} />} placeholder="Masukkan kode referral" value={form.referral} onChange={(e) => set('referral', e.target.value)} />
 
                 <div className="flex items-center gap-3 pt-1">
@@ -171,7 +171,7 @@ export default function RegisterPage() {
             {step === 2 && (
               <>
                 <div>
-                  <Field label="Password" type="password" icon={<Icon.shield size={16} />} placeholder="Min. 8 karakter" value={form.password} onChange={(e) => set('password', e.target.value)} required />
+                  <Field label="Password" type="password" icon={<Icon.lock size={16} />} placeholder="Min. 8 karakter" value={form.password} onChange={(e) => set('password', e.target.value)} required />
                   {form.password.length > 0 && (
                     <div className="mt-2">
                       <div className="flex gap-1 mb-1">
@@ -183,7 +183,7 @@ export default function RegisterPage() {
                     </div>
                   )}
                 </div>
-                <Field label="Konfirmasi Password" type="password" icon={<Icon.shield size={16} />} placeholder="Ulangi password" value={form.confirm} onChange={(e) => set('confirm', e.target.value)} required error={form.confirm && form.password !== form.confirm ? 'Password tidak cocok' : undefined} />
+                <Field label="Konfirmasi Password" type="password" icon={<Icon.lock size={16} />} placeholder="Ulangi password" value={form.confirm} onChange={(e) => set('confirm', e.target.value)} required error={form.confirm && form.password !== form.confirm ? 'Password tidak cocok' : undefined} />
                 <div className="bg-[#F2F0ED] rounded-xl p-4 text-xs text-[#6B6560] leading-relaxed">
                   Dengan mendaftar, kamu menyetujui{' '}
                   <Link href="/terms" className="text-[#1A56DB] hover:opacity-75">Syarat &amp; Ketentuan</Link>{' '}dan{' '}

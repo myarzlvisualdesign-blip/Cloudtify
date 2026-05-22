@@ -90,6 +90,15 @@ export const Icon = {
   clock: (p: P) => (
     <Svg {...p}><circle cx="12" cy="12" r="9" /><polyline points="12 7 12 12 16 14" /></Svg>
   ),
+  user: (p: P) => (
+    <Svg {...p}><circle cx="12" cy="8" r="3.7" /><path d="M5.5 20.5a6.5 6.5 0 0 1 13 0" /></Svg>
+  ),
+  mail: (p: P) => (
+    <Svg {...p}><rect x="3" y="5" width="18" height="14" rx="2.5" /><path d="m3.5 7.5 8.5 6 8.5-6" /></Svg>
+  ),
+  lock: (p: P) => (
+    <Svg {...p}><rect x="4.5" y="10.5" width="15" height="10" rx="2.5" /><path d="M8 10.5V7a4 4 0 0 1 8 0v3.5" /></Svg>
+  ),
   plus: (p: P) => (
     <Svg {...p}><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></Svg>
   ),

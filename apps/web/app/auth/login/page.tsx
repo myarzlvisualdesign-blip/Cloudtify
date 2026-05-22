@@ -114,7 +114,7 @@ export default function LoginPage() {
             <Field
               label="Email"
               type="email"
-              icon={<Icon.file size={16} />}
+              icon={<Icon.user size={16} />}
               placeholder="nama@email.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -123,7 +123,7 @@ export default function LoginPage() {
             <Field
               label="Password"
               type="password"
-              icon={<Icon.shield size={16} />}
+              icon={<Icon.lock size={16} />}
               placeholder="••••••••"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
