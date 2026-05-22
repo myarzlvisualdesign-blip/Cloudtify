@@ -66,23 +66,25 @@ export function useUser({ redirectTo }: { redirectTo?: string } = {}) {
   useEffect(() => {
     let active = true
 
-    async function load(u: User | null) {
+    function load(u: User | null) {
       if (!active) return
       setUser(u)
-      if (u) {
+      setLoading(false) // resolve auth state immediately — the gate can render now
+      if (!u) {
+        setProfile(null)
+        if (redirectTo && typeof window !== 'undefined') window.location.href = redirectTo
+        return
+      }
+      // IMPORTANT: defer the DB call. Running a Supabase query directly inside the
+      // onAuthStateChange callback deadlocks supabase-js's auth lock and hangs the page.
+      setTimeout(async () => {
         const { data } = await supabase
           .from('profiles')
           .select('id, full_name, username, avatar_url, referral_code, created_at')
           .eq('id', u.id)
           .maybeSingle()
         if (active) setProfile(data as Profile | null)
-      } else {
-        setProfile(null)
-        if (redirectTo && typeof window !== 'undefined') {
-          window.location.href = redirectTo
-        }
-      }
-      if (active) setLoading(false)
+      }, 0)
     }
 
     // getSession reads the cached session synchronously from storage (no network
