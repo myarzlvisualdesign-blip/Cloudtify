@@ -44,6 +44,10 @@ export default function SettingsPage() {
   const [planName, setPlanName] = useState('Free')
   const [pwMsg, setPwMsg] = useState('')
   const [copied, setCopied] = useState(false)
+  const [editing, setEditing] = useState(false)
+  const [editName, setEditName] = useState('')
+  const [savingProfile, setSavingProfile] = useState(false)
+  const [overrideName, setOverrideName] = useState<string | null>(null)
 
   useEffect(() => {
     if (!user) return
@@ -56,7 +60,7 @@ export default function SettingsPage() {
     })
   }, [user])
 
-  const name = displayName(user, profile)
+  const name = overrideName ?? displayName(user, profile)
   const totalBytes = usage.totalGb * 1e9
   const pct = Math.min((usage.usedBytes / totalBytes) * 100, 100)
   const usedGb = (usage.usedBytes / 1e9).toFixed(1)
@@ -77,6 +81,15 @@ export default function SettingsPage() {
     }
   }
 
+  async function saveProfile() {
+    if (!user || !editName.trim()) return
+    setSavingProfile(true)
+    await supabase.from('profiles').update({ full_name: editName.trim() }).eq('id', user.id)
+    setOverrideName(editName.trim())
+    setSavingProfile(false)
+    setEditing(false)
+  }
+
   return (
     <div className="space-y-6 max-w-2xl">
       <div className="pt-2">
@@ -89,16 +102,36 @@ export default function SettingsPage() {
           <div className="w-14 h-14 rounded-full flex items-center justify-center text-white font-display font-bold text-xl shadow-lg flex-shrink-0" style={{ background: 'linear-gradient(135deg, #1A56DB, #2B7FD4)' }}>
             {initials(name)}
           </div>
-          <div className="min-w-0">
-            <h2 className="font-display font-bold text-[#141110] text-base leading-none truncate">{name}</h2>
-            <p className="text-[#A8A29E] text-sm mt-1 truncate">{user?.email ?? '—'}</p>
-            <span className="inline-block mt-1.5 px-2 py-0.5 rounded-full bg-[#EBF0FF] text-[#1A56DB] text-[11px] font-semibold">Paket {planName}</span>
+          {editing ? (
+            <div className="flex-1 min-w-0">
+              <label className="text-[#141110] text-xs font-semibold">Nama Lengkap</label>
+              <input
+                autoFocus
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') saveProfile(); if (e.key === 'Escape') setEditing(false) }}
+                className="w-full mt-1 bg-white border border-[#E5E2DD] rounded-xl px-3.5 py-2.5 text-sm text-[#141110] focus:outline-none focus:border-[#1A56DB]/50 focus:ring-2 focus:ring-[#1A56DB]/10"
+              />
+            </div>
+          ) : (
+            <div className="min-w-0">
+              <h2 className="font-display font-bold text-[#141110] text-base leading-none truncate">{name}</h2>
+              <p className="text-[#A8A29E] text-sm mt-1 truncate">{user?.email ?? '—'}</p>
+              <span className="inline-block mt-1.5 px-2 py-0.5 rounded-full bg-[#EBF0FF] text-[#1A56DB] text-[11px] font-semibold">Paket {planName}</span>
+            </div>
+          )}
+        </div>
+        {editing ? (
+          <div className="grid grid-cols-2 gap-3">
+            <button onClick={saveProfile} disabled={savingProfile} className="flex items-center justify-center gap-2 text-white font-semibold rounded-xl px-4 py-2.5 text-sm hover:opacity-90 transition-all disabled:opacity-60" style={{ background: 'linear-gradient(135deg, #1A56DB, #2B7FD4)' }}>{savingProfile ? 'Menyimpan…' : 'Simpan'}</button>
+            <button onClick={() => setEditing(false)} className="flex items-center justify-center gap-2 bg-white border-2 border-[#E5E2DD] text-[#6B6560] font-semibold rounded-xl px-4 py-2.5 text-sm hover:border-[#C2BDB8] transition-all">Batal</button>
           </div>
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-          <button className="flex items-center justify-center gap-2 bg-white border-2 border-[#E5E2DD] text-[#141110] font-semibold rounded-xl px-4 py-2.5 text-sm hover:border-[#1A56DB]/30 transition-all"><IcoEdit /> Edit Profil</button>
-          <Link href="/#pricing" className="flex items-center justify-center gap-2 text-white font-semibold rounded-xl px-4 py-2.5 text-sm text-center hover:opacity-90 hover:shadow-md hover:shadow-[#1A56DB]/20 transition-all" style={{ background: 'linear-gradient(135deg, #1A56DB, #2B7FD4)' }}>Upgrade Paket</Link>
-        </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-3">
+            <button onClick={() => { setEditName(name); setEditing(true) }} className="flex items-center justify-center gap-2 bg-white border-2 border-[#E5E2DD] text-[#141110] font-semibold rounded-xl px-4 py-2.5 text-sm hover:border-[#1A56DB]/30 transition-all"><IcoEdit /> Edit Profil</button>
+            <Link href="/#pricing" className="flex items-center justify-center gap-2 text-white font-semibold rounded-xl px-4 py-2.5 text-sm text-center hover:opacity-90 hover:shadow-md hover:shadow-[#1A56DB]/20 transition-all" style={{ background: 'linear-gradient(135deg, #1A56DB, #2B7FD4)' }}>Upgrade Paket</Link>
+          </div>
+        )}
       </Section>
 
       <Section title="Storage">
