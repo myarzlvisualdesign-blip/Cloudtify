@@ -1,16 +1,7 @@
 'use client'
 import Link from 'next/link'
 import { useState, useEffect } from 'react'
-
-function CloudLogo() {
-  return (
-    <svg width="30" height="30" viewBox="0 0 30 30" fill="none" aria-hidden="true">
-      <rect width="30" height="30" rx="8" fill="#1A56DB"/>
-      <path d="M9 21H21C23.2 21 25 19.2 25 17C25 14.8 23.2 13 21 13C20.6 11.5 19.5 10.2 18 9.5C16.5 8.8 14.8 8.7 13.2 9.3C11.7 9.9 10.5 11 9.9 12.5C8.3 12.6 7 14 7 15.7C7 18.1 7.9 21 9 21Z" fill="rgba(255,255,255,0.2)" stroke="white" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
-      <path d="M15 19V14M13 16L15 14L17 16" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-    </svg>
-  )
-}
+import { Logo } from '../brand/Logo'
 
 export function Navbar() {
   const [isOpen, setIsOpen] = useState(false)
@@ -30,11 +21,8 @@ export function Navbar() {
     }`}>
       <div className="mx-auto max-w-6xl px-6 h-16 flex items-center justify-between">
         {/* Logo */}
-        <Link href="/" className="flex items-center gap-2.5 group">
-          <CloudLogo />
-          <span className="font-display font-extrabold text-[#141110] text-lg tracking-tight leading-none">
-            Cloud<span className="text-[#1A56DB]">tify</span>
-          </span>
+        <Link href="/" className="flex items-center group">
+          <Logo size={30} />
         </Link>
 
         {/* Desktop nav links */}

@@ -2,6 +2,10 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../../../lib/supabase/client'
 import { formatRelativeDate } from '@cloudtify/utils'
+import { Card } from '../../../components/ui/Card'
+import { Badge, PlanBadge } from '../../../components/ui/Badge'
+import { Icon } from '../../../components/ui/icons'
+import { initials } from '../../../lib/auth'
 
 interface UserRow {
   id: string
@@ -11,13 +15,6 @@ interface UserRow {
   is_banned: boolean
   is_verified: boolean
   plan_name: string
-}
-
-const PLAN_COLORS: Record<string, { bg: string; text: string }> = {
-  free: { bg: '#F1F5F9', text: '#64748B' },
-  plus: { bg: '#EFF6FF', text: '#2563EB' },
-  pro: { bg: '#F5F3FF', text: '#7C3AED' },
-  ultra: { bg: '#FEFCE8', text: '#CA8A04' },
 }
 
 export default function AdminUsersPage() {
@@ -34,12 +31,27 @@ export default function AdminUsersPage() {
           .select('id, full_name, username, created_at, is_banned, is_verified')
           .order('created_at', { ascending: false })
           .limit(100)
-        if (search) {
-          query = query.or(`full_name.ilike.%${search}%,username.ilike.%${search}%`)
-        }
-        const { data } = await query
+        if (search) query = query.or(`full_name.ilike.%${search}%,username.ilike.%${search}%`)
+
+        const [{ data }, planRes] = await Promise.all([
+          query,
+          supabase.from('user_active_subscription').select('user_id, plan_name'),
+        ])
+        const planMap = new Map<string, string>()
+        ;((planRes.data ?? []) as { user_id: string; plan_name: string }[]).forEach((r) => planMap.set(r.user_id, r.plan_name))
+
         if (data) {
-          setUsers(data.map((u) => ({ ...u, full_name: u.full_name ?? null, username: u.username ?? null, is_banned: u.is_banned ?? false, is_verified: u.is_verified ?? false, plan_name: 'free' })))
+          setUsers(
+            data.map((u) => ({
+              id: u.id,
+              full_name: u.full_name ?? null,
+              username: u.username ?? null,
+              created_at: u.created_at,
+              is_banned: u.is_banned ?? false,
+              is_verified: u.is_verified ?? false,
+              plan_name: planMap.get(u.id) ?? 'free',
+            })),
+          )
         }
       } finally {
         setLoading(false)
@@ -49,82 +61,66 @@ export default function AdminUsersPage() {
   }, [search])
 
   return (
-    <div className="space-y-5 max-w-7xl">
+    <div className="space-y-5 max-w-6xl">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-[#0F172A]">Pengguna</h1>
-          <p className="text-[#64748B] text-sm">Kelola semua pengguna Cloudtify</p>
-        </div>
+        <p className="text-[#6B6560] text-sm">{loading ? 'Memuat…' : `${users.length} pengguna terdaftar`}</p>
         <div className="relative">
-          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[#94A3B8]">🔍</span>
+          <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#A8A29E]"><Icon.search size={16} /></span>
           <input
             type="search"
-            placeholder="Cari pengguna..."
+            placeholder="Cari nama atau username…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="bg-white border border-[#E2E8F0] rounded-2xl pl-11 pr-4 py-3 text-sm text-[#0F172A] placeholder-[#CBD5E1] focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 shadow-sm w-64 transition-all"
+            className="bg-white border border-[#E5E2DD] rounded-xl pl-10 pr-4 py-2.5 text-sm text-[#141110] placeholder-[#C2BDB8] focus:outline-none focus:border-[#1A56DB]/60 focus:ring-2 focus:ring-[#1A56DB]/10 w-full sm:w-72 transition-all"
           />
         </div>
       </div>
 
-      <div className="card overflow-hidden">
+      <Card className="overflow-hidden">
         {loading ? (
-          <div className="flex items-center justify-center py-20">
-            <div className="text-[#94A3B8] text-sm">⏳ Memuat data...</div>
+          <div className="flex items-center justify-center py-20 text-[#A8A29E] text-sm gap-2">
+            <svg className="animate-spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10" strokeOpacity="0.25" /><path d="M12 2a10 10 0 0 1 10 10" /></svg>
+            Memuat data…
           </div>
         ) : users.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 gap-3">
-            <div className="text-4xl">👥</div>
-            <p className="text-[#64748B] text-sm">
-              {search ? 'Tidak ada pengguna ditemukan' : 'Belum ada pengguna'}
-            </p>
+            <div className="w-12 h-12 rounded-2xl bg-[#F2F0ED] flex items-center justify-center text-[#A8A29E]"><Icon.users size={22} /></div>
+            <p className="text-[#6B6560] text-sm">{search ? 'Tidak ada pengguna ditemukan' : 'Belum ada pengguna terdaftar'}</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-[#F1F5F9]">
-                  {['Pengguna', 'Username', 'Paket', 'Status', 'Bergabung', 'Aksi'].map((h) => (
-                    <th key={h} className="text-left px-5 py-4 text-[#94A3B8] text-xs font-bold uppercase tracking-wider whitespace-nowrap bg-[#F8FAFF]">
-                      {h}
-                    </th>
+                <tr className="bg-[#FAFAF8] border-b border-[#E5E2DD]">
+                  {['Pengguna', 'Username', 'Paket', 'Status', 'Bergabung', ''].map((h) => (
+                    <th key={h} className="text-left px-5 py-3.5 text-[#A8A29E] text-[11px] font-bold uppercase tracking-wider whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {users.map((user, i) => {
-                  const planColor = PLAN_COLORS[user.plan_name] ?? PLAN_COLORS['free']!
+                {users.map((user) => {
+                  const name = user.full_name ?? 'Pengguna'
                   return (
-                    <tr key={user.id} className={`border-b border-[#F1F5F9] last:border-0 hover:bg-[#F8FAFF] transition-colors ${i % 2 === 0 ? '' : 'bg-[#FAFBFF]'}`}>
-                      <td className="px-5 py-4">
+                    <tr key={user.id} className="border-b border-[#F2F0ED] last:border-0 hover:bg-[#FAFAF8] transition-colors">
+                      <td className="px-5 py-3.5">
                         <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-full flex items-center justify-center text-sm text-white font-bold flex-shrink-0" style={{ background: 'linear-gradient(135deg, #2563EB, #06B6D4)' }}>
-                            {(user.full_name ?? 'U')[0]?.toUpperCase()}
+                          <div className="w-9 h-9 rounded-full flex items-center justify-center text-xs text-white font-display font-bold flex-shrink-0" style={{ background: 'linear-gradient(135deg, #1A56DB, #2B7FD4)' }}>
+                            {initials(name)}
                           </div>
-                          <div>
-                            <div className="text-[#0F172A] text-sm font-semibold">{user.full_name ?? 'Pengguna'}</div>
-                            {user.is_verified && <div className="text-blue-500 text-xs flex items-center gap-1">✓ Terverifikasi</div>}
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[#141110] text-sm font-semibold">{name}</span>
+                            {user.is_verified && <span className="text-[#1A56DB]"><Icon.check size={13} /></span>}
                           </div>
                         </div>
                       </td>
-                      <td className="px-5 py-4 text-[#64748B] text-sm">@{user.username ?? '-'}</td>
-                      <td className="px-5 py-4">
-                        <span className="text-xs px-2.5 py-1 rounded-full font-bold" style={{ background: planColor.bg, color: planColor.text }}>
-                          {user.plan_name.toUpperCase()}
-                        </span>
+                      <td className="px-5 py-3.5 text-[#6B6560] text-sm">{user.username ? '@' + user.username : '—'}</td>
+                      <td className="px-5 py-3.5"><PlanBadge plan={user.plan_name} /></td>
+                      <td className="px-5 py-3.5">
+                        <Badge tone={user.is_banned ? 'red' : 'green'}>{user.is_banned ? 'Diblokir' : 'Aktif'}</Badge>
                       </td>
-                      <td className="px-5 py-4">
-                        <span className={`text-xs px-2.5 py-1 rounded-full font-bold ${user.is_banned ? 'tag-expired' : 'tag-active'}`}>
-                          {user.is_banned ? 'Diblokir' : 'Aktif'}
-                        </span>
-                      </td>
-                      <td className="px-5 py-4 text-[#94A3B8] text-xs whitespace-nowrap">
-                        {formatRelativeDate(user.created_at)}
-                      </td>
-                      <td className="px-5 py-4">
-                        <a href={`/admin/users/${user.id}`} className="text-blue-500 hover:text-blue-700 text-xs font-semibold hover:underline">
-                          Detail →
-                        </a>
+                      <td className="px-5 py-3.5 text-[#A8A29E] text-xs whitespace-nowrap">{formatRelativeDate(user.created_at)}</td>
+                      <td className="px-5 py-3.5 text-right">
+                        <button className="text-[#1A56DB] hover:opacity-70 text-xs font-semibold">Detail →</button>
                       </td>
                     </tr>
                   )
@@ -133,7 +129,7 @@ export default function AdminUsersPage() {
             </table>
           </div>
         )}
-      </div>
+      </Card>
     </div>
   )
 }

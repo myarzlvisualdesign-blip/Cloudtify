@@ -3,13 +3,17 @@ import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
-// Browser client — anon key only
+// Single browser client (anon key). RLS protects every row server-side.
+// detectSessionInUrl handles the Google OAuth redirect callback.
 export const supabase = createSupabaseClient(supabaseUrl, supabaseAnonKey, {
-  auth: { persistSession: true },
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: true,
+    flowType: 'pkce',
+  },
 })
 
-// Admin client pakai service role — hanya dipakai di Edge/server function
-// Untuk static export, admin panel auth dilakukan via anon key + is_admin() check
 export function createClient() {
   return supabase
 }
