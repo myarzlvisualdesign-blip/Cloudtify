@@ -20,6 +20,7 @@ function IcoLink() { return <svg width="11" height="11" viewBox="0 0 24 24" fill
 function IcoMore() { return <svg {...si} stroke="currentColor"><circle cx="12" cy="5" r="1" /><circle cx="12" cy="12" r="1" /><circle cx="12" cy="19" r="1" /></svg> }
 function IcoDownload2() { return <svg {...si} stroke="currentColor"><path d="M21 15v3a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3v-3" /><polyline points="7.5 11 12 15.5 16.5 11" /><line x1="12" y1="15.5" x2="12" y2="3" /></svg> }
 function IcoTrash() { return <svg {...si} stroke="currentColor"><polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" /></svg> }
+function IcoRestore() { return <svg {...si} stroke="currentColor"><polyline points="1 4 1 10 7 10" /><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" /></svg> }
 function IcoGrid() { return <svg {...si} stroke="currentColor"><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /></svg> }
 function IcoList() { return <svg {...si} stroke="currentColor"><line x1="8" y1="6" x2="21" y2="6" /><line x1="8" y1="12" x2="21" y2="12" /><line x1="8" y1="18" x2="21" y2="18" /><line x1="3" y1="6" x2="3.01" y2="6" /><line x1="3" y1="12" x2="3.01" y2="12" /><line x1="3" y1="18" x2="3.01" y2="18" /></svg> }
 
@@ -66,6 +67,7 @@ export default function FilesPage() {
   const [busyId, setBusyId] = useState<string | null>(null)
   const [newFolder, setNewFolder] = useState('')
   const [showFolderInput, setShowFolderInput] = useState(false)
+  const [trash, setTrash] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   async function downloadFile(f: FileRow) {
@@ -83,6 +85,24 @@ export default function FilesPage() {
     await loadData()
   }
 
+  async function restoreFile(f: FileRow) {
+    setMenuFor(null)
+    setBusyId(f.id)
+    await supabase.from('files').update({ is_deleted: false, deleted_at: null }).eq('id', f.id)
+    setBusyId(null)
+    await loadData()
+  }
+
+  async function purgeFile(f: FileRow) {
+    setMenuFor(null)
+    setBusyId(f.id)
+    // Permanent: remove the stored object, then delete the row for good.
+    await supabase.storage.from(f.r2_bucket || 'files').remove([f.r2_key])
+    await supabase.from('files').delete().eq('id', f.id)
+    setBusyId(null)
+    await loadData()
+  }
+
   async function createFolder() {
     const name = newFolder.trim()
     if (!name || !user) return
@@ -95,7 +115,7 @@ export default function FilesPage() {
   const loadData = useCallback(async () => {
     if (!user) return
     const [f, fo, sh, su] = await Promise.all([
-      supabase.from('files').select('id, name, size_bytes, mime_type, folder_id, created_at, r2_key, r2_bucket').eq('user_id', user.id).eq('is_deleted', false).order('created_at', { ascending: false }).limit(200),
+      supabase.from('files').select('id, name, size_bytes, mime_type, folder_id, created_at, r2_key, r2_bucket').eq('user_id', user.id).eq('is_deleted', trash).order('created_at', { ascending: false }).limit(200),
       supabase.from('folders').select('id, name').eq('user_id', user.id).eq('is_deleted', false).order('created_at', { ascending: false }),
       supabase.from('shares').select('file_id').eq('user_id', user.id).eq('status', 'active'),
       supabase.from('storage_usage').select('used_bytes').eq('user_id', user.id).maybeSingle(),
@@ -105,7 +125,7 @@ export default function FilesPage() {
     setSharedIds(new Set(((sh.data ?? []) as { file_id: string }[]).map((s) => s.file_id)))
     setUsedBytes((su.data?.used_bytes ?? 0) as number)
     setLoading(false)
-  }, [user])
+  }, [user, trash])
 
   useEffect(() => {
     if (user) loadData().catch(() => setLoading(false))
@@ -160,11 +180,11 @@ export default function FilesPage() {
   return (
     <div
       className="space-y-6 relative"
-      onDragOver={(e) => { e.preventDefault(); if (!dragging) setDragging(true) }}
+      onDragOver={(e) => { e.preventDefault(); if (!trash && !dragging) setDragging(true) }}
       onDragLeave={(e) => { e.preventDefault(); if (e.currentTarget === e.target) setDragging(false) }}
-      onDrop={(e) => { e.preventDefault(); setDragging(false); handleFiles(e.dataTransfer.files) }}
+      onDrop={(e) => { e.preventDefault(); setDragging(false); if (!trash) handleFiles(e.dataTransfer.files) }}
     >
-      {dragging && (
+      {dragging && !trash && (
         <div className="fixed inset-0 z-40 flex items-center justify-center pointer-events-none p-6" style={{ background: 'rgba(26,86,219,0.08)', backdropFilter: 'blur(2px)' }}>
           <div className="rounded-3xl border-2 border-dashed border-[#1A56DB] bg-white px-10 py-8 text-center shadow-xl">
             <div className="w-14 h-14 rounded-2xl bg-[#EBF0FF] flex items-center justify-center mx-auto mb-3 text-[#1A56DB]"><IcoUpload /></div>
@@ -174,19 +194,22 @@ export default function FilesPage() {
         </div>
       )}
 
-      <div className="flex items-start justify-between pt-2 gap-4">
+      <div className="flex items-start justify-between pt-2 gap-3">
         <div>
-          <h1 className="font-display font-bold text-[#141110] text-xl tracking-tight">File Saya</h1>
-          <p className="text-[#A8A29E] text-sm mt-0.5">{loading ? 'Memuat…' : `${files.length} file · ${formatBytes(usedBytes)} digunakan`}</p>
+          <h1 className="font-display font-bold text-[#141110] text-xl tracking-tight">{trash ? 'Sampah' : 'File Saya'}</h1>
+          <p className="text-[#A8A29E] text-sm mt-0.5">{loading ? 'Memuat…' : trash ? `${files.length} file · pulih dalam ≤30 hari` : `${files.length} file · ${formatBytes(usedBytes)} digunakan`}</p>
         </div>
         <input ref={fileInputRef} type="file" multiple className="hidden" onChange={(e) => handleFiles(e.target.files)} />
-        <button onClick={() => fileInputRef.current?.click()} disabled={uploading} className="flex items-center gap-2 text-white text-sm font-semibold px-4 py-2.5 rounded-xl hover:opacity-90 hover:-translate-y-px hover:shadow-lg hover:shadow-[#1A56DB]/20 transition-all duration-200 flex-shrink-0 disabled:opacity-60 disabled:hover:translate-y-0" style={{ background: 'linear-gradient(135deg, #1A56DB, #2B7FD4)' }}>
-          {uploading ? (
-            <><svg className="animate-spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10" strokeOpacity="0.25" /><path d="M12 2a10 10 0 0 1 10 10" /></svg> Mengupload…</>
-          ) : (
-            <><IcoUpload /> Upload</>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <button onClick={() => { setTrash((t) => !t); setMenuFor(null) }} className={`flex items-center gap-2 text-sm font-semibold px-3.5 py-2.5 rounded-xl border transition-all ${trash ? 'bg-[#EBF0FF] border-[#C2D0F8] text-[#1A56DB]' : 'bg-white border-[#E5E2DD] text-[#6B6560] hover:border-[#C2BDB8] hover:text-[#141110]'}`}>
+            <IcoTrash /> {trash ? 'Kembali' : 'Sampah'}
+          </button>
+          {!trash && (
+            <button onClick={() => fileInputRef.current?.click()} disabled={uploading} className="flex items-center gap-2 text-white text-sm font-semibold px-4 py-2.5 rounded-xl hover:opacity-90 hover:-translate-y-px hover:shadow-lg hover:shadow-[#1A56DB]/20 transition-all duration-200 disabled:opacity-60 disabled:hover:translate-y-0" style={{ background: 'linear-gradient(135deg, #1A56DB, #2B7FD4)' }}>
+              {uploading ? (<><svg className="animate-spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10" strokeOpacity="0.25" /><path d="M12 2a10 10 0 0 1 10 10" /></svg> Mengupload…</>) : (<><IcoUpload /> Upload</>)}
+            </button>
           )}
-        </button>
+        </div>
       </div>
 
       {uploadMsg && (
@@ -198,6 +221,7 @@ export default function FilesPage() {
         <input type="text" placeholder="Cari file…" value={search} onChange={(e) => setSearch(e.target.value)} className="w-full bg-white border border-[#E5E2DD] rounded-xl pl-10 pr-4 py-3 text-sm text-[#141110] placeholder-[#C2BDB8] focus:outline-none focus:border-[#1A56DB]/50 focus:ring-2 focus:ring-[#1A56DB]/10 transition-all" />
       </div>
 
+      {!trash && (
       <div>
         <div className="flex items-center justify-between mb-3">
           <h2 className="font-display font-semibold text-[#141110] text-sm">Folder</h2>
@@ -223,6 +247,7 @@ export default function FilesPage() {
           !showFolderInput && <p className="text-[#A8A29E] text-xs">Belum ada folder. Buat folder pertama untuk merapikan file.</p>
         )}
       </div>
+      )}
 
       <div className="flex items-center justify-between gap-3">
         <div className="flex gap-1.5 overflow-x-auto pb-1 flex-1">
@@ -241,12 +266,22 @@ export default function FilesPage() {
         <div className="bg-white border border-[#E5E2DD] rounded-2xl py-16 text-center text-[#A8A29E] text-sm">Memuat file…</div>
       ) : files.length === 0 ? (
         <div className="bg-white border border-[#E5E2DD] rounded-2xl py-16 text-center">
-          <div className="w-14 h-14 rounded-2xl bg-[#EBF0FF] flex items-center justify-center mx-auto mb-4 text-[#1A56DB]"><IcoUpload /></div>
-          <p className="text-[#141110] text-sm font-semibold mb-1">Belum ada file</p>
-          <p className="text-[#A8A29E] text-xs mb-5">File yang kamu upload akan muncul di sini.</p>
-          <button onClick={() => fileInputRef.current?.click()} disabled={uploading} className="inline-flex items-center gap-2 text-white text-sm font-semibold px-5 py-2.5 rounded-xl hover:opacity-90 transition-all disabled:opacity-60" style={{ background: 'linear-gradient(135deg, #1A56DB, #2B7FD4)' }}>
-            <IcoUpload /> {uploading ? 'Mengupload…' : 'Upload File'}
-          </button>
+          {trash ? (
+            <>
+              <div className="w-14 h-14 rounded-2xl bg-[#F2F0ED] flex items-center justify-center mx-auto mb-4 text-[#A8A29E]"><IcoTrash /></div>
+              <p className="text-[#141110] text-sm font-semibold mb-1">Sampah kosong</p>
+              <p className="text-[#A8A29E] text-xs">File yang kamu hapus muncul di sini & bisa dipulihkan ≤30 hari.</p>
+            </>
+          ) : (
+            <>
+              <div className="w-14 h-14 rounded-2xl bg-[#EBF0FF] flex items-center justify-center mx-auto mb-4 text-[#1A56DB]"><IcoUpload /></div>
+              <p className="text-[#141110] text-sm font-semibold mb-1">Belum ada file</p>
+              <p className="text-[#A8A29E] text-xs mb-5">File yang kamu upload akan muncul di sini.</p>
+              <button onClick={() => fileInputRef.current?.click()} disabled={uploading} className="inline-flex items-center gap-2 text-white text-sm font-semibold px-5 py-2.5 rounded-xl hover:opacity-90 transition-all disabled:opacity-60" style={{ background: 'linear-gradient(135deg, #1A56DB, #2B7FD4)' }}>
+                <IcoUpload /> {uploading ? 'Mengupload…' : 'Upload File'}
+              </button>
+            </>
+          )}
         </div>
       ) : view === 'list' ? (
         <div className="bg-white border border-[#E5E2DD] rounded-2xl overflow-hidden">
@@ -255,7 +290,7 @@ export default function FilesPage() {
           ) : filtered.map((file, i) => {
             const { Icon: IconCmp, accent, bg } = FILE_TYPE_MAP[catOf(file.mime_type)]
             return (
-              <div key={file.id} onClick={() => downloadFile(file)} className={`flex items-center gap-3.5 px-5 py-3.5 cursor-pointer hover:bg-[#FAFAF8] transition-colors ${i < filtered.length - 1 ? 'border-b border-[#F2F0ED]' : ''} ${busyId === file.id ? 'opacity-50' : ''}`}>
+              <div key={file.id} onClick={() => { if (!trash) downloadFile(file) }} className={`flex items-center gap-3.5 px-5 py-3.5 ${trash ? '' : 'cursor-pointer'} hover:bg-[#FAFAF8] transition-colors ${i < filtered.length - 1 ? 'border-b border-[#F2F0ED]' : ''} ${busyId === file.id ? 'opacity-50' : ''}`}>
                 <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: bg, color: accent }}><IconCmp /></div>
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-[#141110] text-sm truncate">{file.name}</p>
@@ -268,9 +303,18 @@ export default function FilesPage() {
                     {menuFor === file.id && (
                       <>
                         <div className="fixed inset-0 z-10" onClick={() => setMenuFor(null)} />
-                        <div className="absolute right-0 top-9 z-20 w-40 bg-white border border-[#E5E2DD] rounded-xl shadow-[0_8px_28px_rgba(20,17,16,0.12)] py-1.5 overflow-hidden">
-                          <button onClick={() => downloadFile(file)} className="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-[#141110] hover:bg-[#FAFAF8] transition-colors"><IcoDownload2 /> Download</button>
-                          <button onClick={() => deleteFile(file)} className="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-[#DC2626] hover:bg-red-50 transition-colors"><IcoTrash /> Hapus</button>
+                        <div className="absolute right-0 top-9 z-20 w-44 bg-white border border-[#E5E2DD] rounded-xl shadow-[0_8px_28px_rgba(20,17,16,0.12)] py-1.5 overflow-hidden">
+                          {trash ? (
+                            <>
+                              <button onClick={() => restoreFile(file)} className="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-[#141110] hover:bg-[#FAFAF8] transition-colors"><IcoRestore /> Pulihkan</button>
+                              <button onClick={() => purgeFile(file)} className="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-[#DC2626] hover:bg-red-50 transition-colors"><IcoTrash /> Hapus permanen</button>
+                            </>
+                          ) : (
+                            <>
+                              <button onClick={() => downloadFile(file)} className="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-[#141110] hover:bg-[#FAFAF8] transition-colors"><IcoDownload2 /> Download</button>
+                              <button onClick={() => deleteFile(file)} className="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-[#DC2626] hover:bg-red-50 transition-colors"><IcoTrash /> Hapus</button>
+                            </>
+                          )}
                         </div>
                       </>
                     )}
@@ -285,7 +329,7 @@ export default function FilesPage() {
           {filtered.map((file) => {
             const { Icon: IconCmp, accent, bg } = FILE_TYPE_MAP[catOf(file.mime_type)]
             return (
-              <button key={file.id} onClick={() => downloadFile(file)} className={`bg-white border border-[#E5E2DD] rounded-xl p-4 text-left cursor-pointer hover:border-[#C2D0F8] hover:shadow-[0_4px_16px_rgba(26,86,219,0.08)] transition-all duration-200 ${busyId === file.id ? 'opacity-50' : ''}`}>
+              <button key={file.id} onClick={() => (trash ? restoreFile(file) : downloadFile(file))} title={trash ? 'Klik untuk pulihkan' : 'Klik untuk download'} className={`bg-white border border-[#E5E2DD] rounded-xl p-4 text-left cursor-pointer hover:border-[#C2D0F8] hover:shadow-[0_4px_16px_rgba(26,86,219,0.08)] transition-all duration-200 ${busyId === file.id ? 'opacity-50' : ''}`}>
                 <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-3" style={{ background: bg, color: accent }}><IconCmp /></div>
                 <p className="font-medium text-[#141110] text-xs truncate">{file.name}</p>
                 <p className="text-[#A8A29E] text-[10px] mt-1">{formatBytes(file.size_bytes)}</p>
