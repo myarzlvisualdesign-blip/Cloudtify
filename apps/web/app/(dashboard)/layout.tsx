@@ -15,7 +15,7 @@ const NAV: { label: string; href: string; icon: IconKey }[] = [
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [path, setPath] = useState('')
-  const { user, profile } = useUser({ redirectTo: '/auth/login/' })
+  const { user, profile, loading } = useUser({ redirectTo: '/auth/login/' })
   const [storage, setStorage] = useState({ usedGb: 0, totalGb: 15, pct: 0 })
 
   useEffect(() => {
@@ -37,6 +37,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const name = displayName(user, profile)
   const avatar = profile?.avatar_url ?? (user?.user_metadata?.avatar_url as string | undefined)
   const planLabel = 'Paket Free'
+
+  // Auth gate: while the session is resolving (or redirecting to login), show a
+  // clean loader instead of flashing empty dashboard chrome on refresh.
+  if (loading || !user) {
+    return (
+      <div className="min-h-screen bg-[#FAFAF8] flex flex-col items-center justify-center gap-5">
+        <Logo size={40} />
+        <svg className="animate-spin text-[#1A56DB]" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10" strokeOpacity="0.2" /><path d="M12 2a10 10 0 0 1 10 10" /></svg>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen flex">

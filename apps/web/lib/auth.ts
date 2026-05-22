@@ -46,6 +46,16 @@ export async function signOut() {
   if (typeof window !== 'undefined') window.location.href = '/auth/login/'
 }
 
+export async function resetPassword(email: string) {
+  return supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${appUrl}/auth/reset-password/`,
+  })
+}
+
+export async function updatePassword(password: string) {
+  return supabase.auth.updateUser({ password })
+}
+
 /* ── React hook: current user + profile ───────────────────────────── */
 
 export function useUser({ redirectTo }: { redirectTo?: string } = {}) {
@@ -75,7 +85,9 @@ export function useUser({ redirectTo }: { redirectTo?: string } = {}) {
       if (active) setLoading(false)
     }
 
-    supabase.auth.getUser().then(({ data }) => load(data.user))
+    // getSession reads the cached session synchronously from storage (no network
+    // round-trip), so a page refresh resolves auth instantly without a flash.
+    supabase.auth.getSession().then(({ data }) => load(data.session?.user ?? null))
     const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => load(session?.user ?? null))
 
     return () => {
