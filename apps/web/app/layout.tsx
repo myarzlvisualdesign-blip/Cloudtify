@@ -1,8 +1,19 @@
 import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
+import { Plus_Jakarta_Sans, Inter } from 'next/font/google'
 import './globals.css'
 
-const inter = Inter({ subsets: ['latin'] })
+const displayFont = Plus_Jakarta_Sans({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700', '800'],
+  variable: '--font-display',
+  display: 'swap',
+})
+
+const bodyFont = Inter({
+  subsets: ['latin'],
+  variable: '--font-sans',
+  display: 'swap',
+})
 
 export const metadata: Metadata = {
   title: {
@@ -28,16 +39,13 @@ export const metadata: Metadata = {
     title: 'Cloudtify',
     description: 'Cloud storage premium mulai Rp15.000/bulan',
   },
-  robots: {
-    index: true,
-    follow: true,
-  },
+  robots: { index: true, follow: true },
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="id">
-      <body className={`${inter.className} bg-[#EEF2FF] antialiased`}>{children}</body>
+    <html lang="id" className={`${displayFont.variable} ${bodyFont.variable}`} style={{ background: '#FAFAF8' }}>
+      <body className="bg-[#FAFAF8] antialiased font-sans">{children}</body>
     </html>
   )
 }
