@@ -26,3 +26,22 @@ end $$;
 
 -- NB: inserting a row into public.files fires trg_files_storage_sync →
 -- sync_storage_usage(), which keeps public.storage_usage accurate automatically.
+
+-- ── Avatars bucket (PUBLIC, 5 MB) for profile photos ────────────────
+-- Created via Storage API: { id:"avatars", public:true, file_size_limit:5242880 }
+-- Read is public; users may only write under their own {user_id}/ folder.
+do $$
+begin
+  if not exists (select 1 from pg_policy where polname = 'ct_avatars_insert') then
+    create policy ct_avatars_insert on storage.objects for insert to authenticated
+      with check (bucket_id = 'avatars' and (storage.foldername(name))[1] = auth.uid()::text);
+  end if;
+  if not exists (select 1 from pg_policy where polname = 'ct_avatars_update') then
+    create policy ct_avatars_update on storage.objects for update to authenticated
+      using (bucket_id = 'avatars' and (storage.foldername(name))[1] = auth.uid()::text);
+  end if;
+  if not exists (select 1 from pg_policy where polname = 'ct_avatars_delete') then
+    create policy ct_avatars_delete on storage.objects for delete to authenticated
+      using (bucket_id = 'avatars' and (storage.foldername(name))[1] = auth.uid()::text);
+  end if;
+end $$;

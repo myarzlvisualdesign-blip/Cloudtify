@@ -21,6 +21,8 @@ function IcoMore() { return <svg {...si} stroke="currentColor"><circle cx="12" c
 function IcoDownload2() { return <svg {...si} stroke="currentColor"><path d="M21 15v3a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3v-3" /><polyline points="7.5 11 12 15.5 16.5 11" /><line x1="12" y1="15.5" x2="12" y2="3" /></svg> }
 function IcoTrash() { return <svg {...si} stroke="currentColor"><polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" /></svg> }
 function IcoRestore() { return <svg {...si} stroke="currentColor"><polyline points="1 4 1 10 7 10" /><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" /></svg> }
+function IcoEye() { return <svg {...si} stroke="currentColor"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg> }
+function IcoRename() { return <svg {...si} stroke="currentColor"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></svg> }
 function IcoGrid() { return <svg {...si} stroke="currentColor"><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /></svg> }
 function IcoList() { return <svg {...si} stroke="currentColor"><line x1="8" y1="6" x2="21" y2="6" /><line x1="8" y1="12" x2="21" y2="12" /><line x1="8" y1="18" x2="21" y2="18" /><line x1="3" y1="6" x2="3.01" y2="6" /><line x1="3" y1="12" x2="3.01" y2="12" /><line x1="3" y1="18" x2="3.01" y2="18" /></svg> }
 
@@ -68,12 +70,36 @@ export default function FilesPage() {
   const [newFolder, setNewFolder] = useState('')
   const [showFolderInput, setShowFolderInput] = useState(false)
   const [trash, setTrash] = useState(false)
+  const [preview, setPreview] = useState<{ url: string; name: string; cat: Cat } | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   async function downloadFile(f: FileRow) {
     setMenuFor(null)
     const { data } = await supabase.storage.from(f.r2_bucket || 'files').createSignedUrl(f.r2_key, 120, { download: f.name })
     if (data?.signedUrl) window.open(data.signedUrl, '_blank')
+  }
+
+  // Click a file → preview images/videos inline; otherwise download.
+  async function openFile(f: FileRow) {
+    const cat = catOf(f.mime_type)
+    if (cat === 'image' || cat === 'video') {
+      setBusyId(f.id)
+      const { data } = await supabase.storage.from(f.r2_bucket || 'files').createSignedUrl(f.r2_key, 300)
+      setBusyId(null)
+      if (data?.signedUrl) setPreview({ url: data.signedUrl, name: f.name, cat })
+    } else {
+      downloadFile(f)
+    }
+  }
+
+  async function renameFile(f: FileRow) {
+    setMenuFor(null)
+    const name = window.prompt('Ubah nama file:', f.name)?.trim()
+    if (!name || name === f.name) return
+    setBusyId(f.id)
+    await supabase.from('files').update({ name }).eq('id', f.id)
+    setBusyId(null)
+    await loadData()
   }
 
   async function deleteFile(f: FileRow) {
@@ -290,7 +316,7 @@ export default function FilesPage() {
           ) : filtered.map((file, i) => {
             const { Icon: IconCmp, accent, bg } = FILE_TYPE_MAP[catOf(file.mime_type)]
             return (
-              <div key={file.id} onClick={() => { if (!trash) downloadFile(file) }} className={`flex items-center gap-3.5 px-5 py-3.5 ${trash ? '' : 'cursor-pointer'} hover:bg-[#FAFAF8] transition-colors ${i < filtered.length - 1 ? 'border-b border-[#F2F0ED]' : ''} ${busyId === file.id ? 'opacity-50' : ''}`}>
+              <div key={file.id} onClick={() => { if (!trash) openFile(file) }} className={`flex items-center gap-3.5 px-5 py-3.5 ${trash ? '' : 'cursor-pointer'} hover:bg-[#FAFAF8] transition-colors ${i < filtered.length - 1 ? 'border-b border-[#F2F0ED]' : ''} ${busyId === file.id ? 'opacity-50' : ''}`}>
                 <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: bg, color: accent }}><IconCmp /></div>
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-[#141110] text-sm truncate">{file.name}</p>
@@ -311,7 +337,9 @@ export default function FilesPage() {
                             </>
                           ) : (
                             <>
+                              <button onClick={() => openFile(file)} className="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-[#141110] hover:bg-[#FAFAF8] transition-colors"><IcoEye /> Lihat</button>
                               <button onClick={() => downloadFile(file)} className="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-[#141110] hover:bg-[#FAFAF8] transition-colors"><IcoDownload2 /> Download</button>
+                              <button onClick={() => renameFile(file)} className="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-[#141110] hover:bg-[#FAFAF8] transition-colors"><IcoRename /> Ubah nama</button>
                               <button onClick={() => deleteFile(file)} className="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-[#DC2626] hover:bg-red-50 transition-colors"><IcoTrash /> Hapus</button>
                             </>
                           )}
@@ -329,7 +357,7 @@ export default function FilesPage() {
           {filtered.map((file) => {
             const { Icon: IconCmp, accent, bg } = FILE_TYPE_MAP[catOf(file.mime_type)]
             return (
-              <button key={file.id} onClick={() => (trash ? restoreFile(file) : downloadFile(file))} title={trash ? 'Klik untuk pulihkan' : 'Klik untuk download'} className={`bg-white border border-[#E5E2DD] rounded-xl p-4 text-left cursor-pointer hover:border-[#C2D0F8] hover:shadow-[0_4px_16px_rgba(26,86,219,0.08)] transition-all duration-200 ${busyId === file.id ? 'opacity-50' : ''}`}>
+              <button key={file.id} onClick={() => (trash ? restoreFile(file) : openFile(file))} title={trash ? 'Klik untuk pulihkan' : 'Klik untuk lihat'} className={`bg-white border border-[#E5E2DD] rounded-xl p-4 text-left cursor-pointer hover:border-[#C2D0F8] hover:shadow-[0_4px_16px_rgba(26,86,219,0.08)] transition-all duration-200 ${busyId === file.id ? 'opacity-50' : ''}`}>
                 <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-3" style={{ background: bg, color: accent }}><IconCmp /></div>
                 <p className="font-medium text-[#141110] text-xs truncate">{file.name}</p>
                 <p className="text-[#A8A29E] text-[10px] mt-1">{formatBytes(file.size_bytes)}</p>
@@ -337,6 +365,25 @@ export default function FilesPage() {
               </button>
             )
           })}
+        </div>
+      )}
+
+      {preview && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-8" style={{ background: 'rgba(11,21,48,0.85)', backdropFilter: 'blur(4px)' }} onClick={() => setPreview(null)}>
+          <div className="relative w-full max-w-4xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-3 gap-4">
+              <p className="text-white font-medium text-sm truncate">{preview.name}</p>
+              <button onClick={() => setPreview(null)} className="text-white/70 hover:text-white flex-shrink-0" aria-label="Tutup">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+              </button>
+            </div>
+            {preview.cat === 'image' ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={preview.url} alt={preview.name} className="w-full max-h-[78vh] object-contain rounded-xl" />
+            ) : (
+              <video src={preview.url} controls autoPlay className="w-full max-h-[78vh] rounded-xl bg-black" />
+            )}
+          </div>
         </div>
       )}
     </div>

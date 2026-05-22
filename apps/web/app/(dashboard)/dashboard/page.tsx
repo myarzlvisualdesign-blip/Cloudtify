@@ -82,6 +82,7 @@ export default function UserDashboard() {
   }, [user])
 
   const name = displayName(user, profile)
+  const avatar = profile?.avatar_url ?? (user?.user_metadata?.avatar_url as string | undefined)
   const usedBytes = usage.usedGb * 1e9
   const cats = [
     { Icon: IcoImage, label: 'Foto', bytes: usage.image, accent: '#38BDF8' },
@@ -97,8 +98,9 @@ export default function UserDashboard() {
             <p className="text-white/55 text-sm">Selamat datang kembali,</p>
             <h1 className="font-display font-bold text-white text-2xl tracking-tight mt-0.5">Hi, {name}</h1>
           </div>
-          <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-display font-bold" style={{ background: 'rgba(255,255,255,0.18)' }}>
-            {initials(name)}
+          <div className="w-10 h-10 rounded-full overflow-hidden flex items-center justify-center text-white font-display font-bold" style={{ background: 'rgba(255,255,255,0.18)' }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            {avatar ? <img src={avatar} alt={name} className="w-full h-full object-cover" /> : initials(name)}
           </div>
         </div>
 

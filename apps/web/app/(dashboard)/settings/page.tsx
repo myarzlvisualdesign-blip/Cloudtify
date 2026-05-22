@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { supabase } from '../../../lib/supabase/client'
 import { useUser, displayName, initials, signOut } from '../../../lib/auth'
@@ -48,6 +48,23 @@ export default function SettingsPage() {
   const [editName, setEditName] = useState('')
   const [savingProfile, setSavingProfile] = useState(false)
   const [overrideName, setOverrideName] = useState<string | null>(null)
+  const [avatarOverride, setAvatarOverride] = useState<string | null>(null)
+  const [uploadingAvatar, setUploadingAvatar] = useState(false)
+  const avatarRef = useRef<HTMLInputElement>(null)
+
+  async function uploadAvatar(file?: File | null) {
+    if (!file || !user) return
+    setUploadingAvatar(true)
+    const ext = (file.name.split('.').pop() || 'jpg').toLowerCase()
+    const path = `${user.id}/avatar-${Date.now()}.${ext}`
+    const { error } = await supabase.storage.from('avatars').upload(path, file, { upsert: true, contentType: file.type || 'image/jpeg' })
+    if (!error) {
+      const { data } = supabase.storage.from('avatars').getPublicUrl(path)
+      await supabase.from('profiles').update({ avatar_url: data.publicUrl }).eq('id', user.id)
+      setAvatarOverride(data.publicUrl)
+    }
+    setUploadingAvatar(false)
+  }
 
   useEffect(() => {
     if (!user) return
@@ -61,6 +78,7 @@ export default function SettingsPage() {
   }, [user])
 
   const name = overrideName ?? displayName(user, profile)
+  const shownAvatar = avatarOverride ?? profile?.avatar_url ?? (user?.user_metadata?.avatar_url as string | undefined)
   const totalBytes = usage.totalGb * 1e9
   const pct = Math.min((usage.usedBytes / totalBytes) * 100, 100)
   const usedGb = (usage.usedBytes / 1e9).toFixed(1)
@@ -99,8 +117,19 @@ export default function SettingsPage() {
 
       <Section title="Profil">
         <div className="flex items-center gap-4 mb-5">
-          <div className="w-14 h-14 rounded-full flex items-center justify-center text-white font-display font-bold text-xl shadow-lg flex-shrink-0" style={{ background: 'linear-gradient(135deg, #1A56DB, #2B7FD4)' }}>
-            {initials(name)}
+          <div className="relative flex-shrink-0">
+            <input ref={avatarRef} type="file" accept="image/*" className="hidden" onChange={(e) => uploadAvatar(e.target.files?.[0])} />
+            <button onClick={() => avatarRef.current?.click()} title="Ubah foto profil" className="w-14 h-14 rounded-full overflow-hidden flex items-center justify-center text-white font-display font-bold text-xl shadow-lg" style={{ background: 'linear-gradient(135deg, #1A56DB, #2B7FD4)' }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              {shownAvatar ? <img src={shownAvatar} alt={name} className="w-full h-full object-cover" /> : initials(name)}
+            </button>
+            <span className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-white border border-[#E5E2DD] flex items-center justify-center text-[#1A56DB] shadow-sm pointer-events-none">
+              {uploadingAvatar ? (
+                <svg className="animate-spin" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><circle cx="12" cy="12" r="10" strokeOpacity="0.25" /><path d="M12 2a10 10 0 0 1 10 10" /></svg>
+              ) : (
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" /><circle cx="12" cy="13" r="3.2" /></svg>
+              )}
+            </span>
           </div>
           {editing ? (
             <div className="flex-1 min-w-0">

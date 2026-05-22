@@ -35,6 +35,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }, [user])
 
   const name = displayName(user, profile)
+  const avatar = profile?.avatar_url ?? (user?.user_metadata?.avatar_url as string | undefined)
   const planLabel = 'Paket Free'
 
   return (
@@ -70,8 +71,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         {/* User / storage mini card */}
         <div className="mx-3 mb-3 p-4 rounded-xl" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
           <div className="flex items-center gap-3 mb-3">
-            <div className="w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center font-display font-bold text-white text-xs" style={{ background: 'linear-gradient(135deg, #1A56DB, #2B7FD4)' }}>
-              {initials(name)}
+            <div className="w-8 h-8 rounded-full flex-shrink-0 overflow-hidden flex items-center justify-center font-display font-bold text-white text-xs" style={{ background: 'linear-gradient(135deg, #1A56DB, #2B7FD4)' }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              {avatar ? <img src={avatar} alt={name} className="w-full h-full object-cover" /> : initials(name)}
             </div>
             <div className="min-w-0">
               <p className="text-white text-[13px] font-semibold leading-none truncate">{name}</p>
@@ -101,14 +103,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <Logo variant="mark" size={26} />
           <span className="font-display font-bold text-white tracking-tight text-sm">Cloudtify</span>
         </Link>
-        <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-display font-bold" style={{ background: 'linear-gradient(135deg, #1A56DB, #2B7FD4)' }}>
-          {initials(name)}
+        <div className="w-8 h-8 rounded-full overflow-hidden flex items-center justify-center text-white text-xs font-display font-bold" style={{ background: 'linear-gradient(135deg, #1A56DB, #2B7FD4)' }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          {avatar ? <img src={avatar} alt={name} className="w-full h-full object-cover" /> : initials(name)}
         </div>
       </header>
 
       {/* Content */}
       <main className="flex-1 md:ml-60 pt-14 md:pt-0 pb-20 md:pb-0 min-h-screen bg-[#FAFAF8]">
-        <div className="p-4 md:p-8 max-w-[920px]">{children}</div>
+        <div className="p-4 md:p-8 max-w-6xl mx-auto w-full">{children}</div>
       </main>
 
       {/* Mobile bottom nav */}
