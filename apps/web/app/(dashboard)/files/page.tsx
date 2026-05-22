@@ -70,8 +70,19 @@ export default function FilesPage() {
   const [newFolder, setNewFolder] = useState('')
   const [showFolderInput, setShowFolderInput] = useState(false)
   const [trash, setTrash] = useState(false)
-  const [preview, setPreview] = useState<{ url: string; name: string; cat: Cat } | null>(null)
+  const [preview, setPreview] = useState<{ url: string; name: string; mime: string } | null>(null)
+  const [previewError, setPreviewError] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const folderInputRef = useRef<HTMLInputElement>(null)
+
+  // Enable directory selection on the folder input (React doesn't type these attrs).
+  useEffect(() => {
+    const el = folderInputRef.current
+    if (el) {
+      el.setAttribute('webkitdirectory', '')
+      el.setAttribute('directory', '')
+    }
+  }, [])
 
   async function downloadFile(f: FileRow) {
     setMenuFor(null)
@@ -79,16 +90,14 @@ export default function FilesPage() {
     if (data?.signedUrl) window.open(data.signedUrl, '_blank')
   }
 
-  // Click a file → preview images/videos inline; otherwise download.
+  // Click a file → open a preview (images, video, PDF render inline; others fall back to download).
   async function openFile(f: FileRow) {
-    const cat = catOf(f.mime_type)
-    if (cat === 'image' || cat === 'video') {
-      setBusyId(f.id)
-      const { data } = await supabase.storage.from(f.r2_bucket || 'files').createSignedUrl(f.r2_key, 300)
-      setBusyId(null)
-      if (data?.signedUrl) setPreview({ url: data.signedUrl, name: f.name, cat })
-    } else {
-      downloadFile(f)
+    setBusyId(f.id)
+    const { data } = await supabase.storage.from(f.r2_bucket || 'files').createSignedUrl(f.r2_key, 600)
+    setBusyId(null)
+    if (data?.signedUrl) {
+      setPreviewError(false)
+      setPreview({ url: data.signedUrl, name: f.name, mime: f.mime_type || '' })
     }
   }
 
@@ -159,16 +168,28 @@ export default function FilesPage() {
 
   async function handleFiles(list: FileList | null) {
     if (!list || !user) return
+    const items = Array.from(list)
     setUploading(true)
     let failed = 0
-    for (const file of Array.from(list)) {
+
+    // Folder upload: items carry webkitRelativePath like "MyFolder/sub/file.jpg".
+    // Create the top-level folder once and file everything under it.
+    let folderId: string | null = null
+    const rel = (items[0] as File & { webkitRelativePath?: string })?.webkitRelativePath
+    if (rel && rel.includes('/')) {
+      const top = rel.split('/')[0]
+      const { data } = await supabase.from('folders').insert({ user_id: user.id, name: top }).select('id').maybeSingle()
+      folderId = (data?.id as string) ?? null
+    }
+
+    for (const file of items) {
       if (file.size > MAX_BYTES) {
         setUploadMsg(`"${file.name}" lebih dari 50 MB — dilewati`)
         failed++
         continue
       }
       const safe = file.name.replace(/[^\w.\-]+/g, '_')
-      const path = `${user.id}/${Date.now()}_${safe}`
+      const path = `${user.id}/${Date.now()}-${Math.random().toString(36).slice(2, 7)}_${safe}`
       const { error: upErr } = await supabase.storage.from('files').upload(path, file, {
         contentType: file.type || 'application/octet-stream',
         upsert: false,
@@ -176,6 +197,7 @@ export default function FilesPage() {
       if (upErr) { failed++; setUploadMsg('Gagal upload: ' + upErr.message); continue }
       const { error: insErr } = await supabase.from('files').insert({
         user_id: user.id,
+        folder_id: folderId,
         name: file.name,
         original_name: file.name,
         mime_type: file.type || 'application/octet-stream',
@@ -190,6 +212,7 @@ export default function FilesPage() {
     setUploading(false)
     if (failed === 0) setUploadMsg('')
     if (fileInputRef.current) fileInputRef.current.value = ''
+    if (folderInputRef.current) folderInputRef.current.value = ''
   }
 
   const folderCounts = useMemo(() => {
@@ -226,14 +249,20 @@ export default function FilesPage() {
           <p className="text-[#A8A29E] text-sm mt-0.5">{loading ? 'Memuat…' : trash ? `${files.length} file · pulih dalam ≤30 hari` : `${files.length} file · ${formatBytes(usedBytes)} digunakan`}</p>
         </div>
         <input ref={fileInputRef} type="file" multiple className="hidden" onChange={(e) => handleFiles(e.target.files)} />
+        <input ref={folderInputRef} type="file" multiple className="hidden" onChange={(e) => handleFiles(e.target.files)} />
         <div className="flex items-center gap-2 flex-shrink-0">
           <button onClick={() => { setTrash((t) => !t); setMenuFor(null) }} className={`flex items-center gap-2 text-sm font-semibold px-3.5 py-2.5 rounded-xl border transition-all ${trash ? 'bg-[#EBF0FF] border-[#C2D0F8] text-[#1A56DB]' : 'bg-white border-[#E5E2DD] text-[#6B6560] hover:border-[#C2BDB8] hover:text-[#141110]'}`}>
-            <IcoTrash /> {trash ? 'Kembali' : 'Sampah'}
+            <IcoTrash /> <span className="hidden sm:inline">{trash ? 'Kembali' : 'Sampah'}</span>
           </button>
           {!trash && (
-            <button onClick={() => fileInputRef.current?.click()} disabled={uploading} className="flex items-center gap-2 text-white text-sm font-semibold px-4 py-2.5 rounded-xl hover:opacity-90 hover:-translate-y-px hover:shadow-lg hover:shadow-[#1A56DB]/20 transition-all duration-200 disabled:opacity-60 disabled:hover:translate-y-0" style={{ background: 'linear-gradient(135deg, #1A56DB, #2B7FD4)' }}>
-              {uploading ? (<><svg className="animate-spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10" strokeOpacity="0.25" /><path d="M12 2a10 10 0 0 1 10 10" /></svg> Mengupload…</>) : (<><IcoUpload /> Upload</>)}
-            </button>
+            <>
+              <button onClick={() => folderInputRef.current?.click()} disabled={uploading} className="flex items-center gap-2 bg-white border border-[#E5E2DD] text-[#6B6560] text-sm font-semibold px-3.5 py-2.5 rounded-xl hover:border-[#C2BDB8] hover:text-[#141110] transition-all disabled:opacity-60">
+                <IcoFolder /> <span className="hidden sm:inline">Folder</span>
+              </button>
+              <button onClick={() => fileInputRef.current?.click()} disabled={uploading} className="flex items-center gap-2 text-white text-sm font-semibold px-4 py-2.5 rounded-xl hover:opacity-90 hover:-translate-y-px hover:shadow-lg hover:shadow-[#1A56DB]/20 transition-all duration-200 disabled:opacity-60 disabled:hover:translate-y-0" style={{ background: 'linear-gradient(135deg, #1A56DB, #2B7FD4)' }}>
+                {uploading ? (<><svg className="animate-spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10" strokeOpacity="0.25" /><path d="M12 2a10 10 0 0 1 10 10" /></svg> Mengupload…</>) : (<><IcoUpload /> Upload</>)}
+              </button>
+            </>
           )}
         </div>
       </div>
@@ -377,12 +406,29 @@ export default function FilesPage() {
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
               </button>
             </div>
-            {preview.cat === 'image' ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={preview.url} alt={preview.name} className="w-full max-h-[78vh] object-contain rounded-xl" />
-            ) : (
-              <video src={preview.url} controls autoPlay className="w-full max-h-[78vh] rounded-xl bg-black" />
-            )}
+            {(() => {
+              const m = preview.mime.toLowerCase()
+              const isHeic = /heic|heif/.test(m) || /\.heic$|\.heif$/i.test(preview.name)
+              const isImage = m.startsWith('image/') && !isHeic
+              const isVideo = m.startsWith('video/')
+              const isAudio = m.startsWith('audio/')
+              const isPdf = m === 'application/pdf' || /\.pdf$/i.test(preview.name)
+              if (isImage && !previewError) {
+                // eslint-disable-next-line @next/next/no-img-element
+                return <img src={preview.url} alt={preview.name} onError={() => setPreviewError(true)} className="w-full max-h-[80vh] object-contain rounded-xl" />
+              }
+              if (isVideo) return <video src={preview.url} controls autoPlay className="w-full max-h-[80vh] rounded-xl bg-black" />
+              if (isAudio) return <div className="bg-white rounded-2xl p-8"><audio src={preview.url} controls autoPlay className="w-full" /></div>
+              if (isPdf) return <iframe src={preview.url} title={preview.name} className="w-full rounded-xl bg-white" style={{ height: '80vh' }} />
+              return (
+                <div className="bg-white rounded-2xl p-10 text-center">
+                  <div className="w-16 h-16 rounded-2xl bg-[#EBF0FF] flex items-center justify-center mx-auto mb-4 text-[#1A56DB]"><IcoDoc /></div>
+                  <p className="font-display font-bold text-[#141110] text-base mb-1">{isHeic ? 'Format HEIC' : 'Preview tidak tersedia'}</p>
+                  <p className="text-[#A8A29E] text-sm mb-6 max-w-xs mx-auto">{isHeic ? 'Browser belum bisa menampilkan foto HEIC (format iPhone). Download untuk melihatnya.' : 'Tipe file ini tidak bisa dipratinjau langsung di browser.'}</p>
+                  <a href={preview.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 text-white text-sm font-semibold px-5 py-2.5 rounded-xl hover:opacity-90 transition-all" style={{ background: 'linear-gradient(135deg, #1A56DB, #2B7FD4)' }}><IcoDownload2 /> Download &amp; lihat</a>
+                </div>
+              )
+            })()}
           </div>
         </div>
       )}
