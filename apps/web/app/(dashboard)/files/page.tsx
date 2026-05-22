@@ -59,6 +59,7 @@ export default function FilesPage() {
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
   const [uploadMsg, setUploadMsg] = useState('')
+  const [dragging, setDragging] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const loadData = useCallback(async () => {
@@ -127,7 +128,22 @@ export default function FilesPage() {
   )
 
   return (
-    <div className="space-y-6">
+    <div
+      className="space-y-6 relative"
+      onDragOver={(e) => { e.preventDefault(); if (!dragging) setDragging(true) }}
+      onDragLeave={(e) => { e.preventDefault(); if (e.currentTarget === e.target) setDragging(false) }}
+      onDrop={(e) => { e.preventDefault(); setDragging(false); handleFiles(e.dataTransfer.files) }}
+    >
+      {dragging && (
+        <div className="fixed inset-0 z-40 flex items-center justify-center pointer-events-none p-6" style={{ background: 'rgba(26,86,219,0.08)', backdropFilter: 'blur(2px)' }}>
+          <div className="rounded-3xl border-2 border-dashed border-[#1A56DB] bg-white px-10 py-8 text-center shadow-xl">
+            <div className="w-14 h-14 rounded-2xl bg-[#EBF0FF] flex items-center justify-center mx-auto mb-3 text-[#1A56DB]"><IcoUpload /></div>
+            <p className="font-display font-bold text-[#141110] text-base">Lepas untuk upload</p>
+            <p className="text-[#A8A29E] text-xs mt-1">File langsung tersimpan ke Cloudtify</p>
+          </div>
+        </div>
+      )}
+
       <div className="flex items-start justify-between pt-2 gap-4">
         <div>
           <h1 className="font-display font-bold text-[#141110] text-xl tracking-tight">File Saya</h1>
