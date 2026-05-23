@@ -339,8 +339,8 @@ export default function FilesPage() {
         </div>
       )}
 
-      <div className="flex items-start justify-between pt-2 gap-3">
-        <div className="min-w-0">
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between pt-2 gap-3">
+        <div className="min-w-0 flex-1">
           {openFolder && !trash && (
             <button onClick={() => setOpenFolder(null)} className="flex items-center gap-1.5 text-[#1A56DB] text-xs font-semibold hover:opacity-75 mb-1.5">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6" /></svg>
@@ -361,8 +361,8 @@ export default function FilesPage() {
               <button onClick={() => folderInputRef.current?.click()} disabled={uploading} className="flex items-center gap-2 bg-white border border-[#E5E2DD] text-[#6B6560] text-sm font-semibold px-3.5 py-2.5 rounded-xl hover:border-[#C2BDB8] hover:text-[#141110] transition-all disabled:opacity-60">
                 <IcoFolder /> <span className="hidden sm:inline">Folder</span>
               </button>
-              <button onClick={() => fileInputRef.current?.click()} disabled={uploading} className="flex items-center gap-2 text-white text-sm font-semibold px-4 py-2.5 rounded-xl hover:opacity-90 hover:-translate-y-px hover:shadow-lg hover:shadow-[#1A56DB]/20 transition-all duration-200 disabled:opacity-60 disabled:hover:translate-y-0" style={{ background: 'linear-gradient(135deg, #1A56DB, #2B7FD4)' }}>
-                {uploading ? (<><svg className="animate-spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10" strokeOpacity="0.25" /><path d="M12 2a10 10 0 0 1 10 10" /></svg> Mengupload…</>) : (<><IcoUpload /> Upload</>)}
+              <button onClick={() => fileInputRef.current?.click()} disabled={uploading} className="flex items-center gap-2 text-white text-sm font-semibold px-3.5 sm:px-4 py-2.5 rounded-xl hover:opacity-90 hover:-translate-y-px hover:shadow-lg hover:shadow-[#1A56DB]/20 transition-all duration-200 disabled:opacity-60 disabled:hover:translate-y-0" style={{ background: 'linear-gradient(135deg, #1A56DB, #2B7FD4)' }}>
+                {uploading ? (<><svg className="animate-spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10" strokeOpacity="0.25" /><path d="M12 2a10 10 0 0 1 10 10" /></svg> <span className="hidden sm:inline">Mengupload…</span></>) : (<><IcoUpload /> <span className="hidden sm:inline">Upload</span></>)}
               </button>
             </>
           )}
