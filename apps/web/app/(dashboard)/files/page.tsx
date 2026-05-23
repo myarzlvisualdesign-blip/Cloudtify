@@ -155,6 +155,28 @@ export default function FilesPage() {
     }
   }
 
+  async function shareFolder(folder: FolderRow) {
+    if (!user) return
+    const slug = Math.random().toString(36).slice(2, 10) + Date.now().toString(36)
+    const { error } = await supabase.from('shares').insert({
+      user_id: user.id,
+      folder_id: folder.id,
+      slug,
+      status: 'active',
+      visibility: 'public',
+      allow_download: true,
+    })
+    if (error) { setUploadMsg('Gagal bikin link: ' + error.message); return }
+    const link = `${window.location.origin}/s/?id=${slug}`
+    try {
+      await navigator.clipboard.writeText(link)
+      setLinkCopied('folder:' + folder.id)
+      setTimeout(() => setLinkCopied(null), 2500)
+    } catch {
+      window.prompt('Link folder publik:', link)
+    }
+  }
+
   async function copyShareLink(f: FileRow) {
     setMenuFor(null)
     // 24-hour signed URL — anyone with the link can view/download for that window.
@@ -372,19 +394,23 @@ export default function FilesPage() {
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             {folders.slice(0, 8).map((folder) => {
               const cover = folderCovers.get(folder.id)
+              const justCopied = linkCopied === 'folder:' + folder.id
               return (
-                <button key={folder.id} onClick={() => setOpenFolder(folder.id)} className="bg-white border border-[#E5E2DD] rounded-xl text-left hover:border-[#C2D0F8] hover:shadow-[0_4px_16px_rgba(26,86,219,0.08)] transition-all duration-200 group cursor-pointer overflow-hidden">
+                <div key={folder.id} role="button" tabIndex={0} onClick={() => setOpenFolder(folder.id)} onKeyDown={(e) => { if (e.key === 'Enter') setOpenFolder(folder.id) }} className="bg-white border border-[#E5E2DD] rounded-xl text-left hover:border-[#C2D0F8] hover:shadow-[0_4px_16px_rgba(26,86,219,0.08)] transition-all duration-200 group cursor-pointer overflow-hidden relative">
                   {cover ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={cover} alt="" className="w-full h-20 object-cover" />
                   ) : (
                     <div className="w-full h-20 flex items-center justify-center bg-[#EBF0FF] text-[#1A56DB]"><IcoFolder /></div>
                   )}
+                  <button onClick={(e) => { e.stopPropagation(); shareFolder(folder) }} title={justCopied ? 'Link tersalin' : 'Bagikan folder (link publik)'} className={`absolute top-2 right-2 w-7 h-7 rounded-lg flex items-center justify-center shadow-sm transition-all ${justCopied ? 'bg-[#22C55E] text-white' : 'bg-white/95 border border-[#E5E2DD] text-[#6B6560] hover:text-[#1A56DB] opacity-0 group-hover:opacity-100'}`}>
+                    {justCopied ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg> : <IcoShareLink />}
+                  </button>
                   <div className="p-3">
                     <p className="font-display font-semibold text-[#141110] text-xs leading-snug truncate">{folder.name}</p>
                     <p className="text-[#A8A29E] text-[10px] mt-1">{folderCounts.get(folder.id) ?? 0} file</p>
                   </div>
-                </button>
+                </div>
               )
             })}
           </div>
