@@ -48,6 +48,11 @@ function catOf(mime: string): Cat {
   return 'document'
 }
 
+/** HEIC/HEIF can't be rendered by browsers — skip for thumbnails/covers. */
+function isHeic(f: { mime_type: string; name: string }): boolean {
+  return /heic|heif/.test(f.mime_type || '') || /\.heic$|\.heif$/i.test(f.name)
+}
+
 const FILTERS: [string, string][] = [
   ['all', 'Semua'], ['image', 'Foto'], ['video', 'Video'], ['document', 'Dokumen'], ['archive', 'Arsip'],
 ]
@@ -88,7 +93,7 @@ export default function FilesPage() {
     if (!folders.length || !files.length) return
     const firstImage = new Map<string, FileRow>()
     for (const f of files) {
-      if (f.folder_id && catOf(f.mime_type) === 'image' && !firstImage.has(f.folder_id)) {
+      if (f.folder_id && catOf(f.mime_type) === 'image' && !isHeic(f) && !firstImage.has(f.folder_id)) {
         firstImage.set(f.folder_id, f)
       }
     }
@@ -111,7 +116,7 @@ export default function FilesPage() {
   // Lazy-load image thumbnails when in large-grid mode (Finder-like icon view).
   useEffect(() => {
     if (size !== 'lg' || !files.length) return
-    const images = files.filter((f) => catOf(f.mime_type) === 'image').slice(0, 40)
+    const images = files.filter((f) => catOf(f.mime_type) === 'image' && !isHeic(f)).slice(0, 40)
     const need = images.filter((f) => !imageThumbs.has(f.id))
     if (!need.length) return
     let cancelled = false
@@ -511,7 +516,7 @@ export default function FilesPage() {
           {filtered.map((file) => {
             const cat = catOf(file.mime_type)
             const { Icon: IconCmp, accent, bg } = FILE_TYPE_MAP[cat]
-            const thumb = cat === 'image' ? imageThumbs.get(file.id) : null
+            const thumb = cat === 'image' && !isHeic(file) ? imageThumbs.get(file.id) : null
             return (
               <button key={file.id} onClick={() => (trash ? restoreFile(file) : openFile(file))} title={trash ? 'Klik untuk pulihkan' : 'Klik untuk lihat'} className={`bg-white border border-[#E5E2DD] rounded-xl text-left cursor-pointer hover:border-[#C2D0F8] hover:shadow-[0_4px_16px_rgba(26,86,219,0.08)] transition-all duration-200 ${busyId === file.id ? 'opacity-50' : ''} ${size === 'sm' ? 'p-2.5' : size === 'lg' ? 'p-3' : 'p-4'}`}>
                 {size === 'lg' && thumb ? (
