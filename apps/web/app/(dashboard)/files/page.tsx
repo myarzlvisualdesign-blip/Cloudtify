@@ -74,9 +74,60 @@ export default function FilesPage() {
   const [preview, setPreview] = useState<{ url: string; name: string; mime: string } | null>(null)
   const [previewError, setPreviewError] = useState(false)
   const [openFolder, setOpenFolder] = useState<string | null>(null) // null = root
-  const [linkCopied, setLinkCopied] = useState<string | null>(null) // file id of last copied
+  const [linkCopied, setLinkCopied] = useState<string | null>(null)
+  const [size, setSize] = useState<'sm' | 'md' | 'lg'>('md')
+  const [folderCovers, setFolderCovers] = useState<Map<string, string>>(new Map())
+  const [imageThumbs, setImageThumbs] = useState<Map<string, string>>(new Map())
   const fileInputRef = useRef<HTMLInputElement>(null)
   const folderInputRef = useRef<HTMLInputElement>(null)
+
+  // Compute folder covers (first image file in each folder) → signed URL.
+  useEffect(() => {
+    if (!folders.length || !files.length) return
+    const firstImage = new Map<string, FileRow>()
+    for (const f of files) {
+      if (f.folder_id && catOf(f.mime_type) === 'image' && !firstImage.has(f.folder_id)) {
+        firstImage.set(f.folder_id, f)
+      }
+    }
+    if (!firstImage.size) return
+    let cancelled = false
+    Promise.all(
+      Array.from(firstImage.entries()).slice(0, 12).map(async ([folderId, f]) => {
+        const { data } = await supabase.storage.from(f.r2_bucket || 'files').createSignedUrl(f.r2_key, 3600)
+        return [folderId, data?.signedUrl] as const
+      }),
+    ).then((pairs) => {
+      if (cancelled) return
+      const next = new Map<string, string>()
+      for (const [k, v] of pairs) if (v) next.set(k, v)
+      setFolderCovers(next)
+    })
+    return () => { cancelled = true }
+  }, [files, folders])
+
+  // Lazy-load image thumbnails when in large-grid mode (Finder-like icon view).
+  useEffect(() => {
+    if (size !== 'lg' || !files.length) return
+    const images = files.filter((f) => catOf(f.mime_type) === 'image').slice(0, 40)
+    const need = images.filter((f) => !imageThumbs.has(f.id))
+    if (!need.length) return
+    let cancelled = false
+    Promise.all(
+      need.map(async (f) => {
+        const { data } = await supabase.storage.from(f.r2_bucket || 'files').createSignedUrl(f.r2_key, 3600)
+        return [f.id, data?.signedUrl] as const
+      }),
+    ).then((pairs) => {
+      if (cancelled) return
+      setImageThumbs((prev) => {
+        const next = new Map(prev)
+        for (const [k, v] of pairs) if (v) next.set(k, v)
+        return next
+      })
+    })
+    return () => { cancelled = true }
+  }, [size, files, imageThumbs])
 
   // Enable directory selection on the folder input (React doesn't type these attrs).
   useEffect(() => {
@@ -319,13 +370,23 @@ export default function FilesPage() {
         )}
         {folders.length > 0 ? (
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            {folders.slice(0, 8).map((folder) => (
-              <button key={folder.id} onClick={() => setOpenFolder(folder.id)} className="bg-white border border-[#E5E2DD] rounded-xl p-4 text-left hover:border-[#C2D0F8] hover:shadow-[0_4px_16px_rgba(26,86,219,0.08)] transition-all duration-200 group cursor-pointer">
-                <div className="text-[#1A56DB] mb-3 opacity-70 group-hover:opacity-100 transition-opacity"><IcoFolder /></div>
-                <p className="font-display font-semibold text-[#141110] text-xs leading-snug truncate">{folder.name}</p>
-                <p className="text-[#A8A29E] text-[10px] mt-1">{folderCounts.get(folder.id) ?? 0} file</p>
-              </button>
-            ))}
+            {folders.slice(0, 8).map((folder) => {
+              const cover = folderCovers.get(folder.id)
+              return (
+                <button key={folder.id} onClick={() => setOpenFolder(folder.id)} className="bg-white border border-[#E5E2DD] rounded-xl text-left hover:border-[#C2D0F8] hover:shadow-[0_4px_16px_rgba(26,86,219,0.08)] transition-all duration-200 group cursor-pointer overflow-hidden">
+                  {cover ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={cover} alt="" className="w-full h-20 object-cover" />
+                  ) : (
+                    <div className="w-full h-20 flex items-center justify-center bg-[#EBF0FF] text-[#1A56DB]"><IcoFolder /></div>
+                  )}
+                  <div className="p-3">
+                    <p className="font-display font-semibold text-[#141110] text-xs leading-snug truncate">{folder.name}</p>
+                    <p className="text-[#A8A29E] text-[10px] mt-1">{folderCounts.get(folder.id) ?? 0} file</p>
+                  </div>
+                </button>
+              )
+            })}
           </div>
         ) : (
           !showFolderInput && <p className="text-[#A8A29E] text-xs">Belum ada folder. Buat folder pertama untuk merapikan file.</p>
@@ -341,8 +402,17 @@ export default function FilesPage() {
         </div>
         <div className="flex gap-1 flex-shrink-0">
           {([['list', IcoList], ['grid', IcoGrid]] as const).map(([v, IconCmp]) => (
-            <button key={v} onClick={() => setView(v as 'grid' | 'list')} className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${view === v ? 'bg-[#EBF0FF] text-[#1A56DB]' : 'bg-white text-[#A8A29E] border border-[#E5E2DD] hover:text-[#141110]'}`}><IconCmp /></button>
+            <button key={v} onClick={() => setView(v as 'grid' | 'list')} title={v === 'list' ? 'List' : 'Grid'} className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${view === v ? 'bg-[#EBF0FF] text-[#1A56DB]' : 'bg-white text-[#A8A29E] border border-[#E5E2DD] hover:text-[#141110]'}`}><IconCmp /></button>
           ))}
+          {view === 'grid' && (
+            <div className="flex gap-1 ml-1 pl-2 border-l border-[#E5E2DD]">
+              {([['sm', 8], ['md', 12], ['lg', 16]] as const).map(([s, px]) => (
+                <button key={s} onClick={() => setSize(s)} title={s === 'sm' ? 'Kecil' : s === 'md' ? 'Sedang' : 'Besar'} className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${size === s ? 'bg-[#EBF0FF] text-[#1A56DB]' : 'bg-white text-[#A8A29E] border border-[#E5E2DD] hover:text-[#141110]'}`}>
+                  <svg width={px} height={px} viewBox="0 0 24 24"><rect width="24" height="24" rx="4" fill="currentColor" /></svg>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
@@ -412,15 +482,22 @@ export default function FilesPage() {
           })}
         </div>
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+        <div className={`grid gap-3 ${size === 'sm' ? 'grid-cols-3 sm:grid-cols-5 lg:grid-cols-7 xl:grid-cols-9' : size === 'lg' ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3' : 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5'}`}>
           {filtered.map((file) => {
-            const { Icon: IconCmp, accent, bg } = FILE_TYPE_MAP[catOf(file.mime_type)]
+            const cat = catOf(file.mime_type)
+            const { Icon: IconCmp, accent, bg } = FILE_TYPE_MAP[cat]
+            const thumb = cat === 'image' ? imageThumbs.get(file.id) : null
             return (
-              <button key={file.id} onClick={() => (trash ? restoreFile(file) : openFile(file))} title={trash ? 'Klik untuk pulihkan' : 'Klik untuk lihat'} className={`bg-white border border-[#E5E2DD] rounded-xl p-4 text-left cursor-pointer hover:border-[#C2D0F8] hover:shadow-[0_4px_16px_rgba(26,86,219,0.08)] transition-all duration-200 ${busyId === file.id ? 'opacity-50' : ''}`}>
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-3" style={{ background: bg, color: accent }}><IconCmp /></div>
-                <p className="font-medium text-[#141110] text-xs truncate">{file.name}</p>
-                <p className="text-[#A8A29E] text-[10px] mt-1">{formatBytes(file.size_bytes)}</p>
-                {sharedIds.has(file.id) && <span className="mt-2 flex items-center gap-1 w-fit px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-[#EBF0FF] text-[#1A56DB]"><IcoLink /> Dibagikan</span>}
+              <button key={file.id} onClick={() => (trash ? restoreFile(file) : openFile(file))} title={trash ? 'Klik untuk pulihkan' : 'Klik untuk lihat'} className={`bg-white border border-[#E5E2DD] rounded-xl text-left cursor-pointer hover:border-[#C2D0F8] hover:shadow-[0_4px_16px_rgba(26,86,219,0.08)] transition-all duration-200 ${busyId === file.id ? 'opacity-50' : ''} ${size === 'sm' ? 'p-2.5' : size === 'lg' ? 'p-3' : 'p-4'}`}>
+                {size === 'lg' && thumb ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={thumb} alt={file.name} className="w-full h-32 object-cover rounded-lg mb-3" />
+                ) : (
+                  <div className={`rounded-xl flex items-center justify-center ${size === 'sm' ? 'w-8 h-8 mb-1.5' : size === 'lg' ? 'w-14 h-14 mb-3' : 'w-10 h-10 mb-3'}`} style={{ background: bg, color: accent }}><IconCmp /></div>
+                )}
+                <p className={`font-medium text-[#141110] truncate ${size === 'sm' ? 'text-[11px] leading-tight' : size === 'lg' ? 'text-sm' : 'text-xs'}`}>{file.name}</p>
+                {size !== 'sm' && <p className="text-[#A8A29E] text-[10px] mt-1">{formatBytes(file.size_bytes)}</p>}
+                {size !== 'sm' && sharedIds.has(file.id) && <span className="mt-2 flex items-center gap-1 w-fit px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-[#EBF0FF] text-[#1A56DB]"><IcoLink /> Dibagikan</span>}
               </button>
             )
           })}
