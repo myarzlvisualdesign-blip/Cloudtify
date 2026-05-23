@@ -65,18 +65,15 @@ export function useUser({ redirectTo }: { redirectTo?: string } = {}) {
 
   useEffect(() => {
     let active = true
+    let initialResolved = false
 
-    function load(u: User | null) {
+    function applyUser(u: User | null) {
       if (!active) return
       setUser(u)
-      setLoading(false) // resolve auth state immediately — the gate can render now
-      if (!u) {
-        setProfile(null)
-        if (redirectTo && typeof window !== 'undefined') window.location.href = redirectTo
-        return
-      }
-      // IMPORTANT: defer the DB call. Running a Supabase query directly inside the
-      // onAuthStateChange callback deadlocks supabase-js's auth lock and hangs the page.
+      setLoading(false)
+      if (!u) { setProfile(null); return }
+      // IMPORTANT: defer DB call to avoid deadlocking supabase-js's auth lock
+      // when this runs from inside onAuthStateChange.
       setTimeout(async () => {
         const { data } = await supabase
           .from('profiles')
@@ -87,10 +84,26 @@ export function useUser({ redirectTo }: { redirectTo?: string } = {}) {
       }, 0)
     }
 
-    // getSession reads the cached session synchronously from storage (no network
-    // round-trip), so a page refresh resolves auth instantly without a flash.
-    supabase.auth.getSession().then(({ data }) => load(data.session?.user ?? null))
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => load(session?.user ?? null))
+    // getSession is the AUTHORITATIVE initial check (reads from storage); only it
+    // can trigger a redirect to login. This avoids premature redirects caused by
+    // onAuthStateChange firing transient nulls before the session is restored.
+    supabase.auth.getSession().then(({ data }) => {
+      initialResolved = true
+      const u = data.session?.user ?? null
+      applyUser(u)
+      if (!u && redirectTo && typeof window !== 'undefined') window.location.href = redirectTo
+    })
+
+    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
+      // Ignore early events until getSession has resolved (avoids redirect races).
+      if (!initialResolved) return
+      const u = session?.user ?? null
+      applyUser(u)
+      // Only redirect on an explicit sign-out, not on every null.
+      if (event === 'SIGNED_OUT' && redirectTo && typeof window !== 'undefined') {
+        window.location.href = redirectTo
+      }
+    })
 
     return () => {
       active = false
