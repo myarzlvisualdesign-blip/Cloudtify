@@ -75,6 +75,7 @@ function Viewer() {
     )
   }
 
+  const share = state.share // non-null after the guard above
   const title = state.folder?.name || state.files[0]?.name || 'File dibagikan'
 
   return (
@@ -86,7 +87,7 @@ function Viewer() {
 
       <main className="max-w-4xl mx-auto px-5 py-10">
         <h1 className="font-display font-extrabold text-[#141110] text-2xl tracking-tight mb-1 truncate">{title}</h1>
-        <p className="text-[#A8A29E] text-sm mb-8">{state.files.length} file · siapa pun dengan link ini bisa lihat{state.share.allow_download ? ' & unduh' : ''}</p>
+        <p className="text-[#A8A29E] text-sm mb-8">{state.files.length} file · siapa pun dengan link ini bisa lihat{share.allow_download ? ' & unduh' : ''}</p>
 
         {state.files.length === 0 ? (
           <div className="bg-white border border-[#E5E2DD] rounded-2xl py-16 text-center text-[#A8A29E] text-sm">Folder ini masih kosong.</div>
@@ -103,7 +104,7 @@ function Viewer() {
                     <p className="font-medium text-[#141110] text-sm truncate">{f.name}</p>
                     <p className="text-[#A8A29E] text-xs mt-0.5">{formatBytes(f.size_bytes)}{f.created_at ? ` · ${formatRelativeDate(f.created_at)}` : ''}</p>
                   </button>
-                  {state.share.allow_download && (
+                  {share.allow_download && (
                     <button onClick={() => download(f)} className="flex items-center gap-1.5 text-[#1A56DB] text-xs font-semibold px-3 py-1.5 rounded-lg hover:bg-[#EBF0FF] transition-colors">
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v3a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3v-3" /><polyline points="7.5 11 12 15.5 16.5 11" /><line x1="12" y1="15.5" x2="12" y2="3" /></svg>
                       Unduh
