@@ -3,6 +3,7 @@ import { Suspense, useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '../../lib/supabase/client'
+import { getSharedFileUrl } from '../../lib/storage'
 import { Logo } from '../../components/brand/Logo'
 import { formatBytes, formatRelativeDate } from '@cloudtify/utils'
 
@@ -51,12 +52,12 @@ function Viewer() {
   }, [slug])
 
   async function open(f: FileRow) {
-    const { data } = await supabase.storage.from(f.r2_bucket || 'files').createSignedUrl(f.r2_key, 600)
-    if (data?.signedUrl) { setPreviewError(false); setPreview({ url: data.signedUrl, name: f.name, mime: f.mime_type || '' }) }
+    const url = await getSharedFileUrl(f).catch(() => '')
+    if (url) { setPreviewError(false); setPreview({ url, name: f.name, mime: f.mime_type || '' }) }
   }
   async function download(f: FileRow) {
-    const { data } = await supabase.storage.from(f.r2_bucket || 'files').createSignedUrl(f.r2_key, 600, { download: f.name })
-    if (data?.signedUrl) window.open(data.signedUrl, '_blank')
+    const url = await getSharedFileUrl(f).catch(() => '')
+    if (url) window.open(url, '_blank')
   }
 
   if (state.loading) {

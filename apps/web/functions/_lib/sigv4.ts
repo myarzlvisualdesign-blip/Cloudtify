@@ -50,7 +50,7 @@ export interface PresignOptions {
   region?: string
   /** "s3" */
   service?: string
-  method: 'GET' | 'PUT' | 'DELETE' | 'HEAD'
+  method: 'GET' | 'PUT' | 'POST' | 'DELETE' | 'HEAD'
   /** e.g. "<account_id>.r2.cloudflarestorage.com" */
   host: string
   /** e.g. "/cloudtify-files/userId/timestamp_filename.jpg" — leading slash, no host */
@@ -58,6 +58,8 @@ export interface PresignOptions {
   expiresInSeconds: number
   /** Extra signed headers (besides host). Lowercase keys. */
   signedHeaders?: Record<string, string>
+  /** Extra query params to include in the signed URL (e.g. partNumber, uploadId, uploads). */
+  extraQuery?: Record<string, string>
 }
 
 export async function presignS3(opts: PresignOptions): Promise<string> {
@@ -83,6 +85,7 @@ export async function presignS3(opts: PresignOptions): Promise<string> {
     'X-Amz-Date': amzDate,
     'X-Amz-Expires': String(opts.expiresInSeconds),
     'X-Amz-SignedHeaders': signedHeadersStr,
+    ...(opts.extraQuery ?? {}),
   }
   const canonicalQuery = Object.keys(query)
     .sort()

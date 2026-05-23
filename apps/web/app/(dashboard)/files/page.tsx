@@ -519,11 +519,17 @@ export default function FilesPage() {
             const thumb = cat === 'image' && !isHeic(file) ? imageThumbs.get(file.id) : null
             return (
               <button key={file.id} onClick={() => (trash ? restoreFile(file) : openFile(file))} title={trash ? 'Klik untuk pulihkan' : 'Klik untuk lihat'} className={`bg-white border border-[#E5E2DD] rounded-xl text-left cursor-pointer hover:border-[#C2D0F8] hover:shadow-[0_4px_16px_rgba(26,86,219,0.08)] transition-all duration-200 ${busyId === file.id ? 'opacity-50' : ''} ${size === 'sm' ? 'p-2.5' : size === 'lg' ? 'p-3' : 'p-4'}`}>
-                {size === 'lg' && thumb ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={thumb} alt={file.name} className="w-full h-32 object-cover rounded-lg mb-3" />
+                {size === 'lg' ? (
+                  thumb ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={thumb} alt={file.name} className="w-full h-32 object-cover rounded-lg mb-3" />
+                  ) : (
+                    <div className="w-full h-32 rounded-lg flex items-center justify-center mb-3" style={{ background: bg }}>
+                      <div style={{ color: accent, transform: 'scale(1.8)' }}><IconCmp /></div>
+                    </div>
+                  )
                 ) : (
-                  <div className={`rounded-xl flex items-center justify-center ${size === 'sm' ? 'w-8 h-8 mb-1.5' : size === 'lg' ? 'w-14 h-14 mb-3' : 'w-10 h-10 mb-3'}`} style={{ background: bg, color: accent }}><IconCmp /></div>
+                  <div className={`rounded-xl flex items-center justify-center ${size === 'sm' ? 'w-8 h-8 mb-1.5' : 'w-10 h-10 mb-3'}`} style={{ background: bg, color: accent }}><IconCmp /></div>
                 )}
                 <p className={`font-medium text-[#141110] truncate ${size === 'sm' ? 'text-[11px] leading-tight' : size === 'lg' ? 'text-sm' : 'text-xs'}`}>{file.name}</p>
                 {size !== 'sm' && <p className="text-[#A8A29E] text-[10px] mt-1">{formatBytes(file.size_bytes)}</p>}
