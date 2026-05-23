@@ -122,7 +122,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
       {/* Content */}
       <main className="flex-1 md:ml-60 pt-14 md:pt-0 pb-20 md:pb-0 min-h-screen bg-[#FAFAF8]">
-        <div className="p-4 md:p-8 max-w-6xl mx-auto w-full">{children}</div>
+        <div className="p-4 md:p-7">{children}</div>
       </main>
 
       {/* Mobile bottom nav */}
