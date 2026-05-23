@@ -3,8 +3,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { formatBytes, formatRelativeDate } from '@cloudtify/utils'
 import { supabase } from '../../../lib/supabase/client'
 import { useUser } from '../../../lib/auth'
+import { uploadFileToR2, getStoredFileUrl, deleteStoredFile, R2_BUCKET } from '../../../lib/storage'
 
-const MAX_BYTES = 52428800 // 50 MB (bucket cap)
+// R2 single-PUT supports up to 5 GB. (Multipart would go higher.)
+const MAX_BYTES = 5 * 1024 * 1024 * 1024
 
 /* ── SVG icons ─────────────────────────────────────────────────────── */
 const si = { width: 16, height: 16, viewBox: '0 0 24 24', fill: 'none', strokeWidth: 1.75, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const }
@@ -94,8 +96,8 @@ export default function FilesPage() {
     let cancelled = false
     Promise.all(
       Array.from(firstImage.entries()).slice(0, 12).map(async ([folderId, f]) => {
-        const { data } = await supabase.storage.from(f.r2_bucket || 'files').createSignedUrl(f.r2_key, 3600)
-        return [folderId, data?.signedUrl] as const
+        const url = await getStoredFileUrl(f, 3600).catch(() => '')
+        return [folderId, url] as const
       }),
     ).then((pairs) => {
       if (cancelled) return
@@ -115,8 +117,8 @@ export default function FilesPage() {
     let cancelled = false
     Promise.all(
       need.map(async (f) => {
-        const { data } = await supabase.storage.from(f.r2_bucket || 'files').createSignedUrl(f.r2_key, 3600)
-        return [f.id, data?.signedUrl] as const
+        const url = await getStoredFileUrl(f, 3600).catch(() => '')
+        return [f.id, url] as const
       }),
     ).then((pairs) => {
       if (cancelled) return
@@ -140,18 +142,18 @@ export default function FilesPage() {
 
   async function downloadFile(f: FileRow) {
     setMenuFor(null)
-    const { data } = await supabase.storage.from(f.r2_bucket || 'files').createSignedUrl(f.r2_key, 120, { download: f.name })
-    if (data?.signedUrl) window.open(data.signedUrl, '_blank')
+    const url = await getStoredFileUrl(f, 120)
+    if (url) window.open(url, '_blank')
   }
 
   // Click a file → open a preview (images, video, PDF render inline; others fall back to download).
   async function openFile(f: FileRow) {
     setBusyId(f.id)
-    const { data } = await supabase.storage.from(f.r2_bucket || 'files').createSignedUrl(f.r2_key, 600)
+    const url = await getStoredFileUrl(f, 600).catch(() => '')
     setBusyId(null)
-    if (data?.signedUrl) {
+    if (url) {
       setPreviewError(false)
-      setPreview({ url: data.signedUrl, name: f.name, mime: f.mime_type || '' })
+      setPreview({ url, name: f.name, mime: f.mime_type || '' })
     }
   }
 
@@ -179,15 +181,14 @@ export default function FilesPage() {
 
   async function copyShareLink(f: FileRow) {
     setMenuFor(null)
-    // 24-hour signed URL — anyone with the link can view/download for that window.
-    const { data } = await supabase.storage.from(f.r2_bucket || 'files').createSignedUrl(f.r2_key, 86400)
-    if (data?.signedUrl) {
+    const url = await getStoredFileUrl(f, 86400).catch(() => '')
+    if (url) {
       try {
-        await navigator.clipboard.writeText(data.signedUrl)
+        await navigator.clipboard.writeText(url)
         setLinkCopied(f.id)
         setTimeout(() => setLinkCopied(null), 2000)
       } catch {
-        window.prompt('Salin link berbagi (berlaku 24 jam):', data.signedUrl)
+        window.prompt('Salin link berbagi (berlaku 24 jam):', url)
       }
     }
   }
@@ -222,8 +223,7 @@ export default function FilesPage() {
   async function purgeFile(f: FileRow) {
     setMenuFor(null)
     setBusyId(f.id)
-    // Permanent: remove the stored object, then delete the row for good.
-    await supabase.storage.from(f.r2_bucket || 'files').remove([f.r2_key])
+    await deleteStoredFile(f)
     await supabase.from('files').delete().eq('id', f.id)
     setBusyId(null)
     await loadData()
@@ -275,29 +275,28 @@ export default function FilesPage() {
 
     for (const file of items) {
       if (file.size > MAX_BYTES) {
-        setUploadMsg(`"${file.name}" lebih dari 50 MB — dilewati`)
+        setUploadMsg(`"${file.name}" terlalu besar (>5 GB) — dilewati`)
         failed++
         continue
       }
-      const safe = file.name.replace(/[^\w.\-]+/g, '_')
-      const path = `${user.id}/${Date.now()}-${Math.random().toString(36).slice(2, 7)}_${safe}`
-      const { error: upErr } = await supabase.storage.from('files').upload(path, file, {
-        contentType: file.type || 'application/octet-stream',
-        upsert: false,
-      })
-      if (upErr) { failed++; setUploadMsg('Gagal upload: ' + upErr.message); continue }
-      const { error: insErr } = await supabase.from('files').insert({
-        user_id: user.id,
-        folder_id: folderId,
-        name: file.name,
-        original_name: file.name,
-        mime_type: file.type || 'application/octet-stream',
-        size_bytes: file.size,
-        r2_key: path,
-        r2_bucket: 'files',
-        visibility: 'private',
-      })
-      if (insErr) { failed++; setUploadMsg('Gagal simpan: ' + insErr.message) }
+      try {
+        const { key, bucket } = await uploadFileToR2(file)
+        const { error: insErr } = await supabase.from('files').insert({
+          user_id: user.id,
+          folder_id: folderId,
+          name: file.name,
+          original_name: file.name,
+          mime_type: file.type || 'application/octet-stream',
+          size_bytes: file.size,
+          r2_key: key,
+          r2_bucket: bucket,
+          visibility: 'private',
+        })
+        if (insErr) { failed++; setUploadMsg('Gagal simpan metadata: ' + insErr.message) }
+      } catch (e) {
+        failed++
+        setUploadMsg(e instanceof Error ? e.message : 'Upload gagal')
+      }
     }
     await loadData()
     setUploading(false)

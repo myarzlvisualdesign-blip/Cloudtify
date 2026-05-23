@@ -2,5 +2,11 @@ name = "cloudtify-web"
 pages_build_output_dir = "./out"
 compatibility_date = "2025-01-01"
 
+# Public/runtime values available to Pages Functions (functions/api/*).
+# Secrets (R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY) go via `wrangler pages secret put`.
 [vars]
 NEXT_PUBLIC_APP_URL = "https://cloudtify.com"
+SUPABASE_URL = "https://xyfmjkzsqdcxkdxiwenb.supabase.co"
+SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh5Zm1qa3pzcWRjeGtkeGl3ZW5iIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkzOTAyNTQsImV4cCI6MjA5NDk2NjI1NH0.bxnHZJlMQKgcUlOTwOuQVrXFpf3Hp_AQqLIYC8wIm_8"
+R2_ACCOUNT_ID = "911f6953b59773385b638d46abca1188"
+R2_BUCKET_NAME = "cloudtify-files"
