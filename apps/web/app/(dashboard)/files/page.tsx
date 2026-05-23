@@ -464,7 +464,7 @@ export default function FilesPage() {
           )}
         </div>
       ) : view === 'list' ? (
-        <div className="bg-white border border-[#E5E2DD] rounded-2xl overflow-hidden">
+        <div className="bg-white border border-[#E5E2DD] rounded-2xl">
           {filtered.length === 0 ? (
             <div className="py-16 text-center text-[#A8A29E] text-sm">Tidak ada file ditemukan</div>
           ) : filtered.map((file, i) => {
