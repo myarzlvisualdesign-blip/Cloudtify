@@ -1,4 +1,5 @@
 import { HeroSection } from '../components/landing/HeroSection'
+import { ScrollStory } from '../components/landing/ScrollStory'
 import { FeaturesSection } from '../components/landing/FeaturesSection'
 import { PricingSection } from '../components/landing/PricingSection'
 import { TestimonialsSection } from '../components/landing/TestimonialsSection'
@@ -9,9 +10,10 @@ import { Navbar } from '../components/landing/Navbar'
 
 export default function LandingPage() {
   return (
-    <main className="min-h-screen bg-[#0A0F1E] text-white">
+    <main className="min-h-screen bg-[#FAFAF8] text-[#141110]">
       <Navbar />
       <HeroSection />
+      <ScrollStory />
       <FeaturesSection />
       <PricingSection />
       <TestimonialsSection />

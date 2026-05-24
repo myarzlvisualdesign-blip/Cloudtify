@@ -1,44 +1,72 @@
+'use client'
 import Link from 'next/link'
+import { motion } from 'framer-motion'
 
 export function CtaSection() {
   return (
-    <section className="bg-white px-6 py-24">
-      <div className="mx-auto max-w-5xl">
-        <div
-          className="relative rounded-3xl overflow-hidden px-8 py-16 md:px-16 md:py-20"
-          style={{ background: 'linear-gradient(140deg, #0F2D8A 0%, #1A56DB 45%, #2B9FD4 100%)' }}>
+    <section className="bg-[#FAFAF8] px-5 py-24 sm:py-32">
+      <div className="section-inner">
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: '-100px' }}
+          transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+          className="relative rounded-[36px] overflow-hidden px-8 py-16 sm:px-16 sm:py-24 noise"
+          style={{ background: 'linear-gradient(140deg, #07112F 0%, #14378E 35%, #1A56DB 70%, #3D6FE8 100%)' }}
+        >
+          {/* Subtle dot pattern */}
+          <div className="absolute inset-0 pointer-events-none opacity-[0.7]"
+            style={{ backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.07) 1px, rgba(0,0,0,0) 1px)', backgroundSize: '24px 24px' }}
+          />
+          {/* Glowing concentric rings */}
+          <div className="absolute -right-32 -top-32 w-[480px] h-[480px] rounded-full border border-white/[0.06]" />
+          <div className="absolute -right-24 -top-24 w-[400px] h-[400px] rounded-full border border-white/[0.10]" />
+          <div className="absolute -right-16 -top-16 w-[320px] h-[320px] rounded-full border border-white/[0.16]" />
+          {/* Gradient glow */}
+          <div className="absolute top-1/2 -right-10 w-72 h-72 rounded-full blur-3xl opacity-60"
+            style={{ background: 'radial-gradient(circle, rgba(96,165,250,0.5), rgba(96,165,250,0) 70%)' }}
+          />
 
-          {/* Decorative rings — rgba white, NOT transparent */}
-          <div className="absolute -top-20 -right-20 w-64 h-64 rounded-full border border-white/[0.08]"/>
-          <div className="absolute -top-10 -right-10 w-64 h-64 rounded-full border border-white/[0.06]"/>
-          <div className="absolute -bottom-20 -left-20 w-56 h-56 rounded-full border border-white/[0.06]"/>
-
-          {/* Subtle dot pattern — rgba */}
-          <div className="absolute inset-0 pointer-events-none"
-            style={{ backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.06) 1px, rgba(0,0,0,0) 1px)', backgroundSize: '28px 28px' }}/>
-
-          <div className="relative max-w-xl">
-            <p className="text-blue-200 text-xs font-semibold tracking-widest uppercase mb-5">Mulai Sekarang</p>
-            <h2 className="font-display font-extrabold text-white text-3xl md:text-4xl leading-tight tracking-tight mb-5">
-              Simpan file kamu dengan<br/>aman — 15 GB gratis.
+          <div className="relative max-w-2xl">
+            <span className="inline-flex items-center gap-2 text-xs font-mono uppercase tracking-[0.18em] text-[#93B4FA] mb-5">
+              <span className="w-6 h-px bg-[#93B4FA]" /> Mulai sekarang
+            </span>
+            <h2 className="font-display font-extrabold text-white text-4xl sm:text-5xl lg:text-6xl tracking-super-tight leading-[1.04] mb-6">
+              Simpan file kamu dengan aman.<br />
+              <span className="bg-gradient-to-r from-[#93B4FA] to-white bg-clip-text text-transparent">15 GB gratis selamanya.</span>
             </h2>
-            <p className="text-blue-100/80 text-base mb-10 leading-relaxed max-w-sm">
-              Tidak butuh kartu kredit. Upgrade kapan saja bila butuh lebih banyak ruang.
+            <p className="text-white/70 text-lg sm:text-xl mb-10 leading-relaxed max-w-lg">
+              Tanpa kartu kredit. Tanpa trial dengan deadline. Upgrade kapan saja bila butuh lebih banyak ruang.
             </p>
 
             <div className="flex flex-col sm:flex-row gap-3">
-              <Link href="/auth/register"
-                className="inline-flex items-center justify-center gap-2 bg-white text-[#1A56DB] font-bold px-8 py-3.5 rounded-xl text-sm transition-all hover:shadow-2xl hover:shadow-black/20 hover:-translate-y-0.5 duration-200">
-                Daftar Gratis Sekarang
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+              <Link
+                href="/auth/register/"
+                className="inline-flex items-center justify-center gap-2 bg-white text-[#1A56DB] font-bold px-7 py-3.5 rounded-xl text-base transition-all duration-200 hover:shadow-2xl hover:shadow-black/30 hover:-translate-y-0.5"
+              >
+                Daftar gratis sekarang
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round">
+                  <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+                </svg>
               </Link>
-              <Link href="/#pricing"
-                className="inline-flex items-center justify-center gap-2 border border-white/25 hover:border-white/50 text-white font-semibold px-8 py-3.5 rounded-xl text-sm transition-all duration-200">
-                Lihat Paket
+              <Link href="/#pricing" className="btn-ghost-dark text-base">
+                Lihat paket harga
               </Link>
             </div>
+
+            {/* Trust microcopy */}
+            <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-2 text-[13px] text-white/60">
+              {['Setup 60 detik', 'Tanpa kartu kredit', 'AES-256 end-to-end', 'Server SEA'].map((t) => (
+                <span key={t} className="flex items-center gap-1.5">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#93B4FA" strokeWidth="3" strokeLinecap="round">
+                    <polyline points="20 6 9 17 4 12"/>
+                  </svg>
+                  {t}
+                </span>
+              ))}
+            </div>
           </div>
-        </div>
+        </motion.div>
       </div>
     </section>
   )

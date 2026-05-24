@@ -1,243 +1,364 @@
 'use client'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
+import { useEffect, useRef, useState } from 'react'
 
-/* ── Custom visual: Floating storage visualisation ─────────────────── */
-function HeroVisual() {
+/* ── Reusable: animated badge with pulse ─────────────────────────── */
+function HeroBadge() {
   return (
-    <div className="relative w-full max-w-[480px] mx-auto select-none">
-      {/* Ambient glow — rgba, not transparent */}
-      <div className="absolute inset-0 rounded-3xl"
-        style={{ background: 'radial-gradient(ellipse 80% 70% at 60% 40%, rgba(26,86,219,0.12) 0%, rgba(250,250,248,0) 72%)' }} />
-
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.8, delay: 0.3 }}
-        className="relative"
-      >
-        <svg viewBox="0 0 480 460" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-auto">
-          <defs>
-            <filter id="card-shadow" x="-8%" y="-8%" width="116%" height="132%">
-              <feDropShadow dx="0" dy="6" stdDeviation="18" floodColor="#141110" floodOpacity="0.07"/>
-            </filter>
-            <filter id="sm-shadow" x="-12%" y="-12%" width="124%" height="140%">
-              <feDropShadow dx="0" dy="4" stdDeviation="10" floodColor="#141110" floodOpacity="0.05"/>
-            </filter>
-            <linearGradient id="ring-grad" x1="0%" y1="0%" x2="100%" y2="0%">
-              <stop offset="0%" stopColor="#1A56DB"/>
-              <stop offset="100%" stopColor="#38BDF8"/>
-            </linearGradient>
-            <linearGradient id="bar-grad" x1="0%" y1="0%" x2="100%" y2="0%">
-              <stop offset="0%" stopColor="#1A56DB"/>
-              <stop offset="100%" stopColor="#60A5FA"/>
-            </linearGradient>
-          </defs>
-
-          {/* ── Background circle ────────────────────── */}
-          <circle cx="268" cy="228" r="186" fill="#EBF0FF" opacity="0.55"/>
-          <circle cx="268" cy="228" r="138" fill="rgba(255,255,255,0.35)"/>
-
-          {/* ── Main file card ───────────────────────── */}
-          <g filter="url(#card-shadow)">
-            <rect x="118" y="108" width="226" height="172" rx="18" fill="white"/>
-            {/* Card header */}
-            <rect x="118" y="108" width="226" height="50" rx="18" fill="#F7F6F3"/>
-            <rect x="118" y="136" width="226" height="22" fill="#F7F6F3"/>
-            {/* Traffic-light dots */}
-            <circle cx="138" cy="133" r="5" fill="#F87171" opacity="0.7"/>
-            <circle cx="155" cy="133" r="5" fill="#FCD34D" opacity="0.7"/>
-            <circle cx="172" cy="133" r="5" fill="#4ADE80" opacity="0.7"/>
-            {/* File name label */}
-            <rect x="138" y="165" width="72" height="9" rx="4.5" fill="#D1CEC9"/>
-            <rect x="138" y="180" width="50" height="7" rx="3.5" fill="#E5E2DD"/>
-            {/* Mini file icon */}
-            <rect x="138" y="158" width="0" height="0"/>
-            {/* Right side lines */}
-            <rect x="224" y="162" width="100" height="8" rx="4" fill="#E5E2DD"/>
-            <rect x="224" y="176" width="74" height="7" rx="3.5" fill="#EBE9E4"/>
-            <rect x="224" y="189" width="88" height="7" rx="3.5" fill="#EBE9E4"/>
-            <rect x="224" y="202" width="60" height="7" rx="3.5" fill="#EBE9E4"/>
-            {/* Upload progress bar */}
-            <rect x="138" y="218" width="182" height="24" rx="12" fill="#F0EFEC"/>
-            <rect x="138" y="218" width="118" height="24" rx="12" fill="url(#bar-grad)" opacity="0.9"/>
-            <circle cx="246" cy="230" r="3.5" fill="white" opacity="0.85"/>
-            <rect x="253" y="227" width="42" height="6" rx="3" fill="white" opacity="0.5"/>
-            <rect x="300" y="226" width="18" height="8" rx="4" fill="#1A56DB" opacity="0.4"/>
-          </g>
-
-          {/* ── Top-right small card (rotated) ───────── */}
-          <motion.g
-            animate={{ y: [0, -7, 0] }}
-            transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut' }}>
-            <g transform="rotate(9 390 152)" filter="url(#sm-shadow)">
-              <rect x="348" y="108" width="116" height="88" rx="14" fill="white"/>
-              <rect x="348" y="108" width="116" height="34" rx="14" fill="#F7F6F3"/>
-              <rect x="348" y="128" width="116" height="14" fill="#F7F6F3"/>
-              <rect x="362" y="120" width="40" height="7" rx="3.5" fill="#D1CEC9"/>
-              <rect x="362" y="152" width="88" height="7" rx="3.5" fill="#E5E2DD"/>
-              <rect x="362" y="165" width="64" height="7" rx="3.5" fill="#EBE9E4"/>
-              {/* Mini storage bar */}
-              <rect x="362" y="178" width="88" height="5" rx="2.5" fill="#F0EFEC"/>
-              <rect x="362" y="178" width="58" height="5" rx="2.5" fill="#1A56DB" opacity="0.65"/>
-            </g>
-          </motion.g>
-
-          {/* ── Storage ring ─────────────────────────── */}
-          <motion.g
-            animate={{ y: [0, 8, 0] }}
-            transition={{ duration: 7, repeat: Infinity, ease: 'easeInOut', delay: 1 }}>
-            <g filter="url(#sm-shadow)">
-              <circle cx="386" cy="334" r="50" fill="white"/>
-              <circle cx="386" cy="334" r="36" fill="none" stroke="#F0EFEC" strokeWidth="7"/>
-              <circle cx="386" cy="334" r="36" fill="none" stroke="url(#ring-grad)" strokeWidth="7"
-                strokeDasharray="226" strokeDashoffset="82" strokeLinecap="round"
-                transform="rotate(-90 386 334)"/>
-              <rect x="374" y="330" width="24" height="8" rx="4" fill="#D1CEC9"/>
-              <rect x="378" y="341" width="16" height="5" rx="2.5" fill="#EBE9E4"/>
-            </g>
-          </motion.g>
-
-          {/* ── Bottom-left floating card ─────────────── */}
-          <motion.g
-            animate={{ y: [0, -6, 0] }}
-            transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut', delay: 2 }}>
-            <g transform="rotate(-7 96 360)" filter="url(#sm-shadow)">
-              <rect x="44" y="326" width="104" height="70" rx="12" fill="white"/>
-              <rect x="58" y="340" width="36" height="7" rx="3.5" fill="#D1CEC9"/>
-              <rect x="58" y="353" width="62" height="6" rx="3" fill="#E5E2DD"/>
-              <rect x="58" y="365" width="48" height="6" rx="3" fill="#E5E2DD"/>
-              <rect x="58" y="378" width="30" height="5" rx="2.5" fill="#4ADE80" opacity="0.55"/>
-            </g>
-          </motion.g>
-
-          {/* ── Decorative particles ──────────────────── */}
-          <circle cx="102" cy="188" r="6" fill="#1A56DB" opacity="0.13"/>
-          <circle cx="440" cy="222" r="4" fill="#38BDF8" opacity="0.22"/>
-          <circle cx="150" cy="416" r="9" fill="#1A56DB" opacity="0.08"/>
-          <circle cx="420" cy="392" r="5" fill="#1A56DB" opacity="0.18"/>
-          <circle cx="64"  cy="276" r="4" fill="#60A5FA" opacity="0.2"/>
-
-          {/* ── Connecting dashed lines ───────────────── */}
-          <line x1="108" y1="194" x2="132" y2="228" stroke="#1A56DB" strokeOpacity="0.1" strokeWidth="1.5" strokeDasharray="5 4"/>
-          <line x1="344" y1="178" x2="386" y2="284" stroke="#1A56DB" strokeOpacity="0.1" strokeWidth="1.5" strokeDasharray="5 4"/>
-        </svg>
-      </motion.div>
-    </div>
+    <motion.div
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+      className="inline-flex items-center gap-2 rounded-full border border-[#D4DCFC] bg-[#EBF0FF]/80 backdrop-blur px-3.5 py-1.5 text-[13px] font-medium text-[#1A56DB]"
+    >
+      <span className="relative inline-flex w-2 h-2">
+        <span className="absolute inset-0 rounded-full bg-[#1A56DB] animate-ping opacity-60" />
+        <span className="relative inline-block w-2 h-2 rounded-full bg-[#1A56DB]" />
+      </span>
+      Cloud storage Indonesia · 15 GB gratis selamanya
+    </motion.div>
   )
 }
 
-function fadeUpProps(delay: number) {
-  return {
-    initial: { opacity: 0, y: 22 },
-    animate: { opacity: 1, y: 0 },
-    transition: { duration: 0.55, ease: 'easeOut' as const, delay },
-  }
+/* ── Animated odometer counter (intersection-triggered) ──────────── */
+function OdometerNumber({ value, suffix = '' }: { value: number; suffix?: string }) {
+  const ref = useRef<HTMLSpanElement | null>(null)
+  const [current, setCurrent] = useState(0)
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const el = ref.current
+    if (!el) return
+    let raf = 0
+    let started = false
+    const io = new IntersectionObserver((entries) => {
+      const e = entries[0]
+      if (!e?.isIntersecting || started) return
+      started = true
+      const start = performance.now()
+      const dur = 1600
+      const tick = (now: number) => {
+        const t = Math.min(1, (now - start) / dur)
+        const eased = 1 - Math.pow(1 - t, 3)
+        setCurrent(Math.round(eased * value))
+        if (t < 1) raf = requestAnimationFrame(tick)
+      }
+      raf = requestAnimationFrame(tick)
+      io.disconnect()
+    }, { threshold: 0.3 })
+    io.observe(el)
+    return () => { io.disconnect(); cancelAnimationFrame(raf) }
+  }, [value])
+  return <span ref={ref}>{current.toLocaleString('id-ID')}{suffix}</span>
+}
+
+/* ── Centerpiece: animated browser-frame product showcase ────────── */
+function ProductShowcase() {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 30, scale: 0.96 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={{ duration: 0.9, delay: 0.4, ease: [0.16, 1, 0.3, 1] }}
+      className="relative mx-auto mt-16 max-w-5xl"
+    >
+      {/* Soft glow underneath */}
+      <div
+        aria-hidden
+        className="absolute -inset-x-12 -bottom-12 h-48 rounded-[100%] blur-3xl"
+        style={{ background: 'radial-gradient(ellipse at 50% 50%, rgba(26,86,219,0.40), rgba(26,86,219,0) 70%)' }}
+      />
+
+      {/* Outer chrome */}
+      <div className="relative rounded-2xl border border-[#E5E2DD] bg-white shadow-elev-4 overflow-hidden">
+        {/* Browser top bar */}
+        <div className="flex items-center gap-3 px-4 py-2.5 border-b border-[#F2F0ED] bg-[#FAFAF8]">
+          <div className="flex gap-1.5">
+            <span className="w-3 h-3 rounded-full bg-[#FF5F57]" />
+            <span className="w-3 h-3 rounded-full bg-[#FEBC2E]" />
+            <span className="w-3 h-3 rounded-full bg-[#28C840]" />
+          </div>
+          <div className="flex-1 flex justify-center">
+            <div className="flex items-center gap-2 bg-white border border-[#E5E2DD] rounded-md px-3 py-1 max-w-md w-full">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#A8A29E" strokeWidth="2.4" strokeLinecap="round">
+                <rect x="3" y="11" width="18" height="11" rx="2"/>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+              </svg>
+              <span className="font-mono text-[11px] text-[#6B6560]">cloudtify.com/files</span>
+            </div>
+          </div>
+          <div className="w-10" />
+        </div>
+
+        {/* App body */}
+        <div className="grid grid-cols-12 min-h-[420px]">
+          {/* Sidebar */}
+          <div className="col-span-3 lg:col-span-2 border-r border-[#F2F0ED] bg-[#0F1124] p-4 flex flex-col gap-1.5">
+            <div className="flex items-center gap-2 mb-4">
+              <span className="w-5 h-5 rounded-md bg-gradient-to-br from-[#1A56DB] to-[#38BDF8]" />
+              <span className="text-white text-[11px] font-display font-bold tracking-tight">Cloudtify</span>
+            </div>
+            {[
+              { l: 'Dashboard', a: false },
+              { l: 'File Saya', a: true },
+              { l: 'Riwayat', a: false },
+              { l: 'Pengaturan', a: false },
+            ].map((n) => (
+              <div
+                key={n.l}
+                className={`flex items-center gap-2 px-2.5 py-1.5 rounded-md text-[11px] ${n.a ? 'bg-[#1A56DB]/15 text-[#93B4FA] font-semibold' : 'text-[#5C5F73]'}`}
+              >
+                <span className={`w-1.5 h-1.5 rounded-full ${n.a ? 'bg-[#60A5FA]' : 'bg-[#5C5F73]'}`} />
+                {n.l}
+              </div>
+            ))}
+            <div className="mt-auto p-2.5 rounded-md bg-white/[0.04] border border-white/[0.06]">
+              <div className="flex justify-between text-[9px] text-[#5C5F73] mb-1.5">
+                <span>Storage</span>
+                <span className="text-[#93B4FA] font-semibold">3,5/15 GB</span>
+              </div>
+              <div className="h-1 rounded-full bg-white/10 overflow-hidden">
+                <motion.div
+                  initial={{ width: 0 }}
+                  animate={{ width: '23%' }}
+                  transition={{ duration: 1.4, delay: 1.2, ease: 'easeOut' }}
+                  className="h-full rounded-full bg-gradient-to-r from-[#1A56DB] to-[#60A5FA]"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Main content */}
+          <div className="col-span-9 lg:col-span-10 p-5 bg-[#FAFAF8]">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <div className="font-display font-bold text-[#141110] text-[15px]">File Saya</div>
+                <div className="text-[10px] text-[#A8A29E] mt-0.5">128 file · 3,5 GB digunakan</div>
+              </div>
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.5, delay: 1.5 }}
+                className="text-white text-[11px] font-semibold px-3 py-1.5 rounded-md bg-gradient-to-r from-[#1A56DB] to-[#3D6FE8] shadow-glow-sm"
+              >
+                + Upload
+              </motion.div>
+            </div>
+
+            {/* File grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+              {/* Photo cards (gradient stand-ins) */}
+              {[
+                { type: 'img', g: 'from-rose-200 via-fuchsia-200 to-indigo-200', name: 'pantai-bali.jpg', size: '2,4 MB' },
+                { type: 'img', g: 'from-emerald-200 via-teal-200 to-cyan-200', name: 'sawah-ubud.jpg',  size: '3,1 MB' },
+                { type: 'vid', g: 'from-orange-200 via-amber-200 to-yellow-200', name: 'sunset.mp4',     size: '21 MB' },
+                { type: 'doc', g: 'from-indigo-200 via-blue-200 to-sky-200',     name: 'proposal.pdf',  size: '482 KB' },
+              ].map((f, i) => (
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.4, delay: 0.9 + i * 0.08 }}
+                  className="rounded-xl overflow-hidden border border-[#E5E2DD] bg-white shadow-elev-1"
+                >
+                  <div className={`h-20 bg-gradient-to-br ${f.g} relative`}>
+                    {f.type === 'vid' && (
+                      <span className="absolute inset-0 flex items-center justify-center bg-black/25">
+                        <span className="w-7 h-7 rounded-full bg-white/95 flex items-center justify-center text-[#141110]">
+                          <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
+                        </span>
+                      </span>
+                    )}
+                    {f.type === 'doc' && (
+                      <span className="absolute inset-0 flex items-center justify-center text-[#1A56DB]">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
+                          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
+                        </svg>
+                      </span>
+                    )}
+                  </div>
+                  <div className="px-2.5 py-2">
+                    <div className="text-[10px] font-medium text-[#141110] truncate">{f.name}</div>
+                    <div className="text-[9px] text-[#A8A29E] mt-0.5">{f.size}</div>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+
+            {/* Uploading row */}
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 1.7 }}
+              className="mt-4 flex items-center gap-3 px-3 py-2.5 rounded-xl bg-white border border-[#E5E2DD] shadow-elev-1"
+            >
+              <div className="w-7 h-7 rounded-md bg-[#EBF0FF] flex items-center justify-center text-[#1A56DB]">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/>
+                </svg>
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex justify-between text-[10px] text-[#141110]">
+                  <span className="font-medium truncate">presentation.pptx</span>
+                  <span className="text-[#1A56DB] font-semibold">68%</span>
+                </div>
+                <div className="mt-1 h-1 rounded-full bg-[#F2F0ED] overflow-hidden">
+                  <motion.div
+                    initial={{ width: '0%' }}
+                    animate={{ width: '68%' }}
+                    transition={{ duration: 1.8, delay: 1.9, ease: 'easeOut' }}
+                    className="h-full rounded-full bg-gradient-to-r from-[#1A56DB] to-[#60A5FA]"
+                  />
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        </div>
+      </div>
+
+      {/* Floating "shared with" pill — top right */}
+      <motion.div
+        initial={{ opacity: 0, x: 30, y: -10 }}
+        animate={{ opacity: 1, x: 0, y: 0 }}
+        transition={{ duration: 0.7, delay: 1.4, ease: [0.16, 1, 0.3, 1] }}
+        className="hidden md:flex absolute -right-4 top-16 items-center gap-2 bg-white rounded-xl px-3 py-2 shadow-elev-3 border border-[#E5E2DD]"
+      >
+        <div className="flex -space-x-2">
+          {['#FB7185', '#22D3EE', '#FBBF24'].map((c) => (
+            <span key={c} className="w-6 h-6 rounded-full border-2 border-white" style={{ background: c }} />
+          ))}
+        </div>
+        <span className="text-[11px] text-[#494440] font-medium">3 orang melihat</span>
+      </motion.div>
+
+      {/* Floating speed badge — bottom left */}
+      <motion.div
+        initial={{ opacity: 0, x: -30, y: 10 }}
+        animate={{ opacity: 1, x: 0, y: 0 }}
+        transition={{ duration: 0.7, delay: 1.6, ease: [0.16, 1, 0.3, 1] }}
+        className="hidden md:flex absolute -left-6 bottom-20 items-center gap-2.5 bg-white rounded-xl px-3.5 py-2.5 shadow-elev-3 border border-[#E5E2DD]"
+      >
+        <span className="w-9 h-9 rounded-lg bg-gradient-to-br from-[#1A56DB] to-[#3D6FE8] flex items-center justify-center text-white">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" /></svg>
+        </span>
+        <div className="leading-tight">
+          <div className="text-[11px] text-[#A8A29E]">Upload speed</div>
+          <div className="text-[13px] font-display font-bold text-[#141110]">120 MB/s</div>
+        </div>
+      </motion.div>
+    </motion.div>
+  )
+}
+
+/* ── Logo cloud (auto-marquee) ────────────────────────────────────── */
+function LogoCloud() {
+  const logos = [
+    'Tokopedia', 'Bukalapak', 'Traveloka', 'Gojek', 'Bibit',
+    'Ruangguru', 'Halodoc', 'Mekari', 'Tiket.com', 'Pinhome',
+  ]
+  const doubled = [...logos, ...logos]
+  return (
+    <div className="mt-20 lg:mt-24">
+      <p className="text-center text-[#A8A29E] text-xs uppercase tracking-[0.18em] font-medium mb-6">
+        Dipakai 52.000+ profesional & UMKM di Indonesia
+      </p>
+      <div className="relative mask-fade-x">
+        <div className="flex gap-12 animate-marquee" style={{ width: 'max-content' }}>
+          {doubled.map((name, i) => (
+            <div key={`${name}-${i}`} className="text-[#A8A29E] font-display font-bold text-xl tracking-tight whitespace-nowrap opacity-60 hover:opacity-100 transition-opacity">
+              {name}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
 }
 
 /* ── Hero Section ──────────────────────────────────────────────────── */
 export function HeroSection() {
   return (
-    <section className="relative overflow-hidden bg-[#FAFAF8] pt-28 pb-20 px-6">
-      {/* Subtle warm-blue ambient — no `transparent` keyword */}
-      <div className="pointer-events-none absolute inset-0"
-        style={{ background: 'radial-gradient(ellipse 70% 50% at 50% 0%, rgba(26,86,219,0.07) 0%, rgba(250,250,248,0) 68%)' }}/>
+    <section className="relative overflow-hidden pt-32 pb-24 px-5 bg-mesh-light noise">
+      {/* Decorative grid */}
+      <div className="pointer-events-none absolute inset-0 bg-grid bg-[length:64px_64px] opacity-[0.5] mask-fade-y" />
 
-      {/* Dot grid */}
-      <div className="pointer-events-none absolute inset-0 opacity-[0.35]"
-        style={{ backgroundImage: 'radial-gradient(circle, #C5C1BB 1px, rgba(250,250,248,0) 1px)', backgroundSize: '30px 30px' }}/>
+      <div className="relative mx-auto max-w-6xl text-center">
+        <HeroBadge />
 
-      <div className="relative mx-auto max-w-6xl">
-        <div className="flex flex-col lg:flex-row items-center gap-10 lg:gap-16">
+        <motion.h1
+          initial={{ opacity: 0, y: 24 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.7, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
+          className="font-display font-extrabold text-[#141110] mt-6 mx-auto max-w-4xl"
+          style={{ fontSize: 'clamp(2.25rem, 5.6vw, 4.25rem)', lineHeight: 1.06, letterSpacing: '-0.035em' }}
+        >
+          Cloud storage <span className="gradient-text">Indonesia yang sesungguhnya.</span>
+        </motion.h1>
 
-          {/* ── Left: copy ───────────────────────────────── */}
-          <div className="flex-1 lg:max-w-[54%] text-center lg:text-left">
+        <motion.p
+          initial={{ opacity: 0, y: 24 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.7, delay: 0.2 }}
+          className="mx-auto mt-7 max-w-2xl text-[#494440] text-lg sm:text-xl leading-relaxed"
+        >
+          15 GB gratis selamanya. Enkripsi penuh. Server Asia Tenggara — latensi rendah.
+          Bayar pakai <strong className="text-[#141110]">GoPay</strong>, <strong className="text-[#141110]">DANA</strong>, atau <strong className="text-[#141110]">QRIS</strong>.
+        </motion.p>
 
-            {/* Badge */}
-            <motion.div
-              {...fadeUpProps(0)}
-              className="inline-flex items-center gap-2 rounded-full border border-[#D4DCFC] bg-[#EBF0FF] px-4 py-1.5 text-sm text-[#1A56DB] font-medium mb-7">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#1A56DB] animate-pulse"/>
-              Cloud storage Indonesia — mulai Rp15.000/bln
-            </motion.div>
-
-            {/* Headline */}
-            <motion.h1
-              {...fadeUpProps(0.10)}
-              className="font-display font-extrabold text-[#141110] leading-[1.08] tracking-tight mb-6"
-              style={{ fontSize: 'clamp(2.6rem, 5.5vw, 3.75rem)' }}>
-              Simpan semua file kamu,<br/>
-              <span style={{
-                backgroundImage: 'linear-gradient(135deg, #1A56DB 0%, #2B9FD4 100%)',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-                backgroundClip: 'text',
-              }}>
-                tanpa kompromi.
-              </span>
-            </motion.h1>
-
-            {/* Sub */}
-            <motion.p
-              {...fadeUpProps(0.20)}
-              className="text-[#6B6560] text-lg leading-relaxed max-w-lg mx-auto lg:mx-0 mb-9">
-              15 GB gratis selamanya. Enkripsi penuh, server Asia Tenggara,
-              bayar pakai GoPay, DANA, atau QRIS — tanpa kartu kredit.
-            </motion.p>
-
-            {/* CTAs */}
-            <motion.div
-              {...fadeUpProps(0.30)}
-              className="flex flex-col sm:flex-row gap-3 justify-center lg:justify-start mb-8">
-              <Link href="/auth/register"
-                className="inline-flex items-center justify-center gap-2 text-white font-semibold px-7 py-3.5 rounded-xl text-base transition-all duration-200 hover:opacity-90 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-[#1A56DB]/25"
-                style={{ background: 'linear-gradient(135deg, #1A56DB, #2B7FD4)' }}>
-                Mulai Gratis — 15 GB
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-              </Link>
-              <Link href="/#pricing"
-                className="inline-flex items-center justify-center gap-2 bg-white text-[#6B6560] font-semibold px-7 py-3.5 rounded-xl text-base border border-[#E5E2DD] transition-all duration-200 hover:border-[#C5C1BB] hover:text-[#141110] hover:shadow-sm">
-                Lihat Paket Harga
-              </Link>
-            </motion.div>
-
-            {/* Trust row */}
-            <motion.div
-              {...fadeUpProps(0.40)}
-              className="flex flex-wrap items-center justify-center lg:justify-start gap-x-5 gap-y-2">
-              {[
-                'Tanpa kartu kredit',
-                'Batalkan kapan saja',
-                'Enkripsi AES-256',
-                'Server SEA',
-              ].map((item) => (
-                <span key={item} className="flex items-center gap-1.5 text-[#A8A29E] text-sm">
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#22C55E" strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
-                  {item}
-                </span>
-              ))}
-            </motion.div>
-          </div>
-
-          {/* ── Right: visual ────────────────────────────── */}
-          <div className="flex-1 w-full lg:max-w-[46%]">
-            <HeroVisual />
-          </div>
-        </div>
-
-        {/* ── Stats bar ───────────────────────────────────── */}
         <motion.div
-          {...fadeUpProps(0.50)}
-          className="mt-20 grid grid-cols-2 md:grid-cols-4 divide-x divide-[#E5E2DD] border border-[#E5E2DD] rounded-2xl overflow-hidden bg-white shadow-[0_1px_6px_rgba(20,17,16,0.04)]">
+          initial={{ opacity: 0, y: 24 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.7, delay: 0.3 }}
+          className="mt-9 flex flex-col sm:flex-row gap-3 justify-center items-center"
+        >
+          <Link href="/auth/register/" className="btn-primary text-base">
+            Mulai Gratis — 15 GB
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round">
+              <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+            </svg>
+          </Link>
+          <Link href="/#features" className="btn-secondary text-base">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="6 4 20 12 6 20" /></svg>
+            Lihat demo (60 detik)
+          </Link>
+        </motion.div>
+
+        {/* Trust row */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.6, delay: 0.5 }}
+          className="mt-6 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-[13px] text-[#A8A29E]"
+        >
+          {['Tanpa kartu kredit', 'Batal kapan saja', 'AES-256 end-to-end', 'Server Jakarta + Singapura'].map((item) => (
+            <span key={item} className="flex items-center gap-1.5">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#22C55E" strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+              {item}
+            </span>
+          ))}
+        </motion.div>
+
+        <ProductShowcase />
+        <LogoCloud />
+
+        {/* Stats bar — animated counters */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: '-100px' }}
+          transition={{ duration: 0.7 }}
+          className="mt-20 grid grid-cols-2 md:grid-cols-4 divide-x divide-[#E5E2DD] border border-[#E5E2DD] rounded-3xl overflow-hidden bg-white shadow-elev-2"
+        >
           {[
-            ['52.000+', 'Pengguna aktif'],
-            ['99,9%',   'Uptime SLA'],
-            ['4,8 / 5', 'Rating pengguna'],
-            ['15 GB',   'Gratis selamanya'],
-          ].map(([val, lbl]) => (
-            <div key={lbl} className="py-5 px-6 text-center">
-              <div className="font-display font-bold text-[#141110] text-xl">{val}</div>
-              <div className="text-[#A8A29E] text-xs mt-0.5">{lbl}</div>
+            { v: 52000, suffix: '+', l: 'Pengguna aktif' },
+            { v: 99,    suffix: ',9% uptime', l: '99,9% SLA terjamin' },
+            { v: 120,   suffix: ' MB/s', l: 'Rata-rata upload' },
+            { v: 15,    suffix: ' GB', l: 'Gratis selamanya' },
+          ].map((s, i) => (
+            <div key={i} className="py-6 px-4 sm:px-6 text-center">
+              <div className="font-display font-extrabold text-[#141110] text-2xl sm:text-3xl tracking-tight">
+                <OdometerNumber value={s.v} suffix={s.suffix} />
+              </div>
+              <div className="text-[#6B6560] text-xs mt-1.5">{s.l}</div>
             </div>
           ))}
         </motion.div>
