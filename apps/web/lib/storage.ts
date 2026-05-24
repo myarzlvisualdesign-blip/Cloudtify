@@ -28,6 +28,70 @@ export async function uploadFileToR2(file: File, onProgress?: (loaded: number, t
   return uploadSinglePut(file, onProgress)
 }
 
+/**
+ * Extract first ~0.4s frame from a video File (local Blob URL, no CORS) and
+ * return a small JPEG Blob. Returns null if extraction fails.
+ */
+export async function captureVideoFrameBlob(file: File): Promise<Blob | null> {
+  if (!file.type.startsWith('video/')) return null
+  return new Promise((resolve) => {
+    const blobUrl = URL.createObjectURL(file)
+    const v = document.createElement('video')
+    v.muted = true
+    v.playsInline = true
+    v.preload = 'metadata'
+    v.src = blobUrl
+    let settled = false
+    const done = (out: Blob | null) => {
+      if (settled) return
+      settled = true
+      try { URL.revokeObjectURL(blobUrl) } catch {}
+      resolve(out)
+    }
+    v.onloadedmetadata = () => {
+      try { v.currentTime = Math.min(0.4, (v.duration || 1) * 0.05) } catch { done(null) }
+    }
+    v.onseeked = () => {
+      try {
+        const w = v.videoWidth || 320
+        const h = v.videoHeight || 180
+        const scale = Math.min(480 / Math.max(w, h), 1)
+        const cw = Math.max(Math.round(w * scale), 1)
+        const ch = Math.max(Math.round(h * scale), 1)
+        const canvas = document.createElement('canvas')
+        canvas.width = cw
+        canvas.height = ch
+        const ctx = canvas.getContext('2d')
+        if (!ctx) return done(null)
+        ctx.drawImage(v, 0, 0, cw, ch)
+        canvas.toBlob((b) => done(b), 'image/jpeg', 0.78)
+      } catch { done(null) }
+    }
+    v.onerror = () => done(null)
+    setTimeout(() => done(null), 12000)
+  })
+}
+
+/** Upload a thumbnail Blob alongside its source file. Returns the R2 key. */
+export async function uploadThumbnail(thumb: Blob, srcKey: string): Promise<string | null> {
+  try {
+    const headers = await authHeader()
+    const thumbKey = `${srcKey}.thumb.jpg`
+    const sign = await fetch('/api/upload-sign', {
+      method: 'POST',
+      headers: { ...headers, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ filename: 'thumb.jpg', mimeType: 'image/jpeg', keyOverride: thumbKey }),
+    })
+    if (!sign.ok) return null
+    const { uploadUrl, key } = (await sign.json()) as { uploadUrl: string; key: string }
+    const put = await fetch(uploadUrl, { method: 'PUT', body: thumb, headers: { 'Content-Type': 'image/jpeg' } })
+    if (!put.ok) return null
+    return key
+  } catch {
+    return null
+  }
+}
+
 async function uploadSinglePut(file: File, onProgress?: (loaded: number, total: number) => void): Promise<UploadResult> {
   const headers = await authHeader()
   const sign = await fetch('/api/upload-sign', {

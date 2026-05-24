@@ -4,7 +4,7 @@ import dynamic from 'next/dynamic'
 import { formatBytes, formatRelativeDate } from '@cloudtify/utils'
 import { supabase } from '../../../lib/supabase/client'
 import { useUser } from '../../../lib/auth'
-import { uploadFileToR2, getStoredFileUrl, deleteStoredFile, R2_BUCKET } from '../../../lib/storage'
+import { uploadFileToR2, getStoredFileUrl, deleteStoredFile, R2_BUCKET, captureVideoFrameBlob, uploadThumbnail } from '../../../lib/storage'
 import type { ShareTarget } from '../../../components/ShareModal'
 
 // Dynamic import so ShareModal's supabase/auth chain never runs during static pre-render.
@@ -56,45 +56,12 @@ function isHeic(f: { mime_type: string; name: string }): boolean {
   return /heic|heif/.test(f.mime_type || '') || /\.heic$|\.heif$/i.test(f.name)
 }
 
-/** Extract first decent frame (≈0.4s) from a video URL → small JPEG data URL. */
-function captureVideoFrame(url: string): Promise<string | null> {
-  return new Promise((resolve) => {
-    const v = document.createElement('video')
-    v.crossOrigin = 'anonymous'
-    v.preload = 'metadata'
-    v.muted = true
-    v.playsInline = true
-    let settled = false
-    const cleanup = () => { try { v.src = '' } catch {} }
-    const done = (out: string | null) => { if (!settled) { settled = true; cleanup(); resolve(out) } }
-    v.onloadeddata = () => { try { v.currentTime = Math.min(0.4, (v.duration || 1) * 0.1) } catch { done(null) } }
-    v.onseeked = () => {
-      try {
-        const w = v.videoWidth || 320
-        const h = v.videoHeight || 180
-        const scale = Math.min(360 / Math.max(w, h), 1)
-        const cw = Math.round(w * scale)
-        const ch = Math.round(h * scale)
-        const canvas = document.createElement('canvas')
-        canvas.width = cw
-        canvas.height = ch
-        const ctx = canvas.getContext('2d')
-        if (!ctx) return done(null)
-        ctx.drawImage(v, 0, 0, cw, ch)
-        done(canvas.toDataURL('image/jpeg', 0.7))
-      } catch { done(null) }
-    }
-    v.onerror = () => done(null)
-    setTimeout(() => done(null), 8000)
-    v.src = url
-  })
-}
 
 const FILTERS: [string, string][] = [
   ['all', 'Semua'], ['image', 'Foto'], ['video', 'Video'], ['document', 'Dokumen'], ['archive', 'Arsip'],
 ]
 
-interface FileRow { id: string; name: string; size_bytes: number; mime_type: string; folder_id: string | null; created_at: string; r2_key: string; r2_bucket: string | null }
+interface FileRow { id: string; name: string; size_bytes: number; mime_type: string; folder_id: string | null; created_at: string; r2_key: string; r2_bucket: string | null; thumb_key?: string | null }
 interface FolderRow { id: string; name: string }
 
 export default function FilesPage() {
@@ -127,40 +94,38 @@ export default function FilesPage() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const folderInputRef = useRef<HTMLInputElement>(null)
 
-  // Folder covers — first renderable image (or video frame) in each folder
+  // Folder covers — prefer first image; fall back to a video that has a
+  // thumb_key (so we always serve a JPEG cover, never a stalled <video>).
   useEffect(() => {
     if (!folders.length || !files.length) return
     const firstCover = new Map<string, FileRow>()
-    // Pass 1: prefer images
     for (const f of files) {
       if (f.folder_id && catOf(f.mime_type) === 'image' && !isHeic(f) && !firstCover.has(f.folder_id))
         firstCover.set(f.folder_id, f)
     }
-    // Pass 2: fall back to videos for folders that still have no cover
     for (const f of files) {
-      if (f.folder_id && catOf(f.mime_type) === 'video' && !firstCover.has(f.folder_id))
+      if (f.folder_id && catOf(f.mime_type) === 'video' && f.thumb_key && !firstCover.has(f.folder_id))
         firstCover.set(f.folder_id, f)
     }
     if (!firstCover.size) return
     let cancelled = false
-    ;(async () => {
-      const entries = Array.from(firstCover.entries()).slice(0, 12)
-      const out = new Map<string, string>()
-      for (const [folderId, f] of entries) {
-        if (cancelled) return
-        try {
-          const url = await getStoredFileUrl(f, 3600)
-          if (!url) continue
-          if (catOf(f.mime_type) === 'video') {
-            const frame = await captureVideoFrame(url)
-            if (frame) out.set(folderId, frame)
-          } else {
-            out.set(folderId, url)
-          }
-        } catch { /* skip */ }
-      }
-      if (!cancelled) setFolderCovers(out)
-    })()
+    Promise.all(
+      Array.from(firstCover.entries()).slice(0, 12).map(async ([folderId, f]) => {
+        const isVideo = catOf(f.mime_type) === 'video'
+        const url = await getStoredFileUrl(
+          isVideo && f.thumb_key
+            ? { r2_key: f.thumb_key, r2_bucket: f.r2_bucket }
+            : f,
+          3600,
+        ).catch(() => '')
+        return [folderId, url] as const
+      }),
+    ).then((pairs) => {
+      if (cancelled) return
+      const next = new Map<string, string>()
+      for (const [k, v] of pairs) if (v) next.set(k, v)
+      setFolderCovers(next)
+    })
     return () => { cancelled = true }
   }, [files, folders])
 
@@ -187,29 +152,27 @@ export default function FilesPage() {
     return () => { cancelled = true }
   }, [files]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Video thumbnails — extract first frame to canvas JPEG so cards show cover
+  // Video thumbnails — use thumb_key (JPEG generated at upload time, no CORS).
+  // Falls back silently for legacy videos that have no thumb_key.
   useEffect(() => {
     if (!files.length) return
-    const videos = files.filter((f) => catOf(f.mime_type) === 'video').slice(0, 30)
+    const videos = files.filter((f) => catOf(f.mime_type) === 'video' && !!f.thumb_key).slice(0, 60)
     const need = videos.filter((f) => !videoThumbs.has(f.id))
     if (!need.length) return
     let cancelled = false
-    ;(async () => {
-      for (const f of need) {
-        if (cancelled) return
-        try {
-          const url = await getStoredFileUrl(f, 3600)
-          if (!url) continue
-          const dataUrl = await captureVideoFrame(url)
-          if (!dataUrl || cancelled) continue
-          setVideoThumbs((prev) => {
-            const next = new Map(prev)
-            next.set(f.id, dataUrl)
-            return next
-          })
-        } catch { /* skip on error */ }
-      }
-    })()
+    Promise.all(
+      need.map(async (f) => {
+        const url = await getStoredFileUrl({ r2_key: f.thumb_key!, r2_bucket: f.r2_bucket }, 3600).catch(() => '')
+        return [f.id, url] as const
+      }),
+    ).then((pairs) => {
+      if (cancelled) return
+      setVideoThumbs((prev) => {
+        const next = new Map(prev)
+        for (const [k, v] of pairs) if (v) next.set(k, v)
+        return next
+      })
+    })
     return () => { cancelled = true }
   }, [files]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -288,7 +251,7 @@ export default function FilesPage() {
   const loadData = useCallback(async () => {
     if (!user) return
     const [f, fo, sh, su] = await Promise.all([
-      supabase.from('files').select('id, name, size_bytes, mime_type, folder_id, created_at, r2_key, r2_bucket').eq('user_id', user.id).eq('is_deleted', trash).order('created_at', { ascending: false }).limit(200),
+      supabase.from('files').select('id, name, size_bytes, mime_type, folder_id, created_at, r2_key, r2_bucket, thumb_key').eq('user_id', user.id).eq('is_deleted', trash).order('created_at', { ascending: false }).limit(200),
       supabase.from('folders').select('id, name').eq('user_id', user.id).eq('is_deleted', false).order('created_at', { ascending: false }),
       supabase.from('shares').select('file_id').eq('user_id', user.id).eq('status', 'active'),
       supabase.from('storage_usage').select('used_bytes').eq('user_id', user.id).maybeSingle(),
@@ -326,9 +289,19 @@ export default function FilesPage() {
       }
       setUploadProgress({ name: file.name, pct: 0 })
       try {
+        // For videos: capture first-frame thumbnail from the LOCAL blob (no
+        // CORS issues). Best-effort — failure to capture won't block upload.
+        let thumbBlob: Blob | null = null
+        if (file.type.startsWith('video/')) {
+          thumbBlob = await captureVideoFrameBlob(file).catch(() => null)
+        }
         const { key, bucket } = await uploadFileToR2(file, (loaded, total) =>
           setUploadProgress({ name: file.name, pct: Math.round((loaded / total) * 100) }),
         )
+        let thumbKey: string | null = null
+        if (thumbBlob) {
+          thumbKey = await uploadThumbnail(thumbBlob, key).catch(() => null)
+        }
         const { error: insErr } = await supabase.from('files').insert({
           user_id: user.id,
           folder_id: openFolder ?? folderId,
@@ -338,6 +311,7 @@ export default function FilesPage() {
           size_bytes: file.size,
           r2_key: key,
           r2_bucket: bucket,
+          thumb_key: thumbKey,
           visibility: 'private',
         })
         if (insErr) { failed++; setUploadMsg('Gagal simpan metadata: ' + insErr.message) }
@@ -477,7 +451,7 @@ export default function FilesPage() {
           {folders.length > 0 ? (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
               {folders.map((folder) => {
-                const cover = folderCovers.get(folder.id)
+                const coverUrl = folderCovers.get(folder.id) || ''
                 return (
                   <div
                     key={folder.id}
@@ -487,9 +461,9 @@ export default function FilesPage() {
                     onKeyDown={(e) => { if (e.key === 'Enter') setOpenFolder(folder.id) }}
                     className="bg-white border border-[#E5E2DD] rounded-2xl text-left hover:border-[#C2D0F8] hover:shadow-[0_4px_16px_rgba(26,86,219,0.08)] transition-all duration-200 group cursor-pointer overflow-hidden relative"
                   >
-                    {cover ? (
+                    {coverUrl ? (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={cover} alt="" className="w-full h-24 object-cover" />
+                      <img src={coverUrl} alt="" className="w-full h-24 object-cover" />
                     ) : (
                       <div className="w-full h-24 flex items-center justify-center bg-gradient-to-br from-[#EBF0FF] to-[#dde7fb] text-[#1A56DB]">
                         <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -579,9 +553,8 @@ export default function FilesPage() {
           {filtered.map((file, i) => {
             const { Icon: IconCmp, accent, bg } = FILE_TYPE_MAP[catOf(file.mime_type)]
             const cat = catOf(file.mime_type)
-            const thumb = cat === 'image' && !isHeic(file)
-              ? imageThumbs.get(file.id)
-              : cat === 'video' ? videoThumbs.get(file.id) : null
+            const imgThumb = cat === 'image' && !isHeic(file) ? imageThumbs.get(file.id) : null
+            const vidThumb = cat === 'video' ? videoThumbs.get(file.id) : null
             return (
               <div
                 key={file.id}
@@ -590,14 +563,19 @@ export default function FilesPage() {
               >
                 {/* Thumbnail or type icon */}
                 <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 overflow-hidden relative" style={{ background: bg, color: accent }}>
-                  {thumb
+                  {imgThumb ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    ? <img src={thumb} alt="" className="w-full h-full object-cover" />
-                    : <IconCmp />}
-                  {cat === 'video' && thumb && (
-                    <span className="absolute inset-0 flex items-center justify-center bg-black/30 text-white">
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
-                    </span>
+                    <img src={imgThumb} alt="" className="w-full h-full object-cover" />
+                  ) : vidThumb ? (
+                    <>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={vidThumb} alt="" className="w-full h-full object-cover" />
+                      <span className="absolute inset-0 flex items-center justify-center bg-black/30 text-white pointer-events-none">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
+                      </span>
+                    </>
+                  ) : (
+                    <IconCmp />
                   )}
                 </div>
                 <div className="flex-1 min-w-0">
@@ -644,9 +622,8 @@ export default function FilesPage() {
             const cat = catOf(file.mime_type)
             const { Icon: IconCmp, accent, bg } = FILE_TYPE_MAP[cat]
             const canImg = cat === 'image' && !isHeic(file)
-            const thumb = canImg
-              ? imageThumbs.get(file.id)
-              : cat === 'video' ? videoThumbs.get(file.id) : null
+            const imgThumb = canImg ? imageThumbs.get(file.id) : null
+            const vidThumb = cat === 'video' ? videoThumbs.get(file.id) : null
             const thumbH = size === 'lg' ? 'h-36' : 'h-24'
             return (
               <div
@@ -656,17 +633,18 @@ export default function FilesPage() {
                 {/* Preview area (sm: icon only; md/lg: thumbnail/icon block) */}
                 {size !== 'sm' ? (
                   <button onClick={() => (trash ? restoreFile(file) : openFile(file))} className="block w-full">
-                    {thumb ? (
+                    {imgThumb ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={imgThumb} alt={file.name} className={`w-full ${thumbH} object-cover`} />
+                    ) : vidThumb ? (
                       <div className={`relative w-full ${thumbH}`}>
                         {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={thumb} alt={file.name} className={`w-full ${thumbH} object-cover`} />
-                        {cat === 'video' && (
-                          <span className="absolute inset-0 flex items-center justify-center bg-black/25">
-                            <span className="w-11 h-11 rounded-full bg-white/90 backdrop-blur flex items-center justify-center text-[#141110]">
-                              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
-                            </span>
+                        <img src={vidThumb} alt={file.name} className={`w-full ${thumbH} object-cover bg-black`} />
+                        <span className="absolute inset-0 flex items-center justify-center bg-black/25 pointer-events-none">
+                          <span className="w-11 h-11 rounded-full bg-white/90 backdrop-blur flex items-center justify-center text-[#141110]">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
                           </span>
-                        )}
+                        </span>
                       </div>
                     ) : (
                       <div className={`w-full ${thumbH} flex items-center justify-center`} style={{ background: bg }}>

@@ -14,12 +14,19 @@ export const onRequestPost = async ({ request, env }: { request: Request; env: E
   const user = await verifyUser(request, env)
   if (!user) return json({ error: 'unauthorized' }, 401)
 
-  const body = (await request.json().catch(() => ({}))) as { filename?: string; mimeType?: string }
+  const body = (await request.json().catch(() => ({}))) as { filename?: string; mimeType?: string; keyOverride?: string }
   const safeName = (body.filename || 'file').replace(/[^\w.\-]+/g, '_').slice(0, 180) || 'file'
   const mimeType = body.mimeType || 'application/octet-stream'
 
   // Per-user folder + random suffix to avoid collisions.
-  const key = `${user.id}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}_${safeName}`
+  // keyOverride lets the client place a derived asset (e.g. thumbnail) under
+  // the same user folder by passing an explicit key — still strictly scoped.
+  let key: string
+  if (body.keyOverride && typeof body.keyOverride === 'string' && body.keyOverride.startsWith(user.id + '/')) {
+    key = body.keyOverride.replace(/[^\w./\-]+/g, '_').slice(0, 360)
+  } else {
+    key = `${user.id}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}_${safeName}`
+  }
   const host = `${env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`
   const path = `/${env.R2_BUCKET_NAME}/${key}`
 
