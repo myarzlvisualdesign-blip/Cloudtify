@@ -1,0 +1,3 @@
+# Cloudflare Pages rewrites (status 200 keeps the URL clean).
+# Branded short link → /s/?id=<slug> behind the scenes.
+/s/:slug    /s/?id=:slug    200

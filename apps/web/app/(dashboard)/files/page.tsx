@@ -1,11 +1,15 @@
 'use client'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import dynamic from 'next/dynamic'
 import { formatBytes, formatRelativeDate } from '@cloudtify/utils'
 import { supabase } from '../../../lib/supabase/client'
 import { useUser } from '../../../lib/auth'
 import { uploadFileToR2, getStoredFileUrl, deleteStoredFile, R2_BUCKET } from '../../../lib/storage'
+import type { ShareTarget } from '../../../components/ShareModal'
 
-// R2 single-PUT supports up to 5 GB. (Multipart would go higher.)
+// Dynamic import so ShareModal's supabase/auth chain never runs during static pre-render.
+const ShareModal = dynamic(() => import('../../../components/ShareModal').then((m) => m.ShareModal), { ssr: false })
+
 const MAX_BYTES = 5 * 1024 * 1024 * 1024
 
 /* ── SVG icons ─────────────────────────────────────────────────────── */
@@ -25,7 +29,7 @@ function IcoTrash() { return <svg {...si} stroke="currentColor"><polyline points
 function IcoRestore() { return <svg {...si} stroke="currentColor"><polyline points="1 4 1 10 7 10" /><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" /></svg> }
 function IcoEye() { return <svg {...si} stroke="currentColor"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg> }
 function IcoRename() { return <svg {...si} stroke="currentColor"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></svg> }
-function IcoShareLink() { return <svg {...si} stroke="currentColor"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" /><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" /></svg> }
+function IcoShare() { return <svg {...si} stroke="currentColor"><circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" /><line x1="8.59" y1="13.51" x2="15.42" y2="17.49" /><line x1="15.41" y1="6.51" x2="8.59" y2="10.49" /></svg> }
 function IcoGrid() { return <svg {...si} stroke="currentColor"><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /></svg> }
 function IcoList() { return <svg {...si} stroke="currentColor"><line x1="8" y1="6" x2="21" y2="6" /><line x1="8" y1="12" x2="21" y2="12" /><line x1="8" y1="18" x2="21" y2="18" /><line x1="3" y1="6" x2="3.01" y2="6" /><line x1="3" y1="12" x2="3.01" y2="12" /><line x1="3" y1="18" x2="3.01" y2="18" /></svg> }
 
@@ -48,7 +52,6 @@ function catOf(mime: string): Cat {
   return 'document'
 }
 
-/** HEIC/HEIF can't be rendered by browsers — skip for thumbnails/covers. */
 function isHeic(f: { mime_type: string; name: string }): boolean {
   return /heic|heif/.test(f.mime_type || '') || /\.heic$|\.heif$/i.test(f.name)
 }
@@ -71,6 +74,7 @@ export default function FilesPage() {
   const [usedBytes, setUsedBytes] = useState(0)
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState<{ name: string; pct: number } | null>(null)
   const [uploadMsg, setUploadMsg] = useState('')
   const [dragging, setDragging] = useState(false)
   const [menuFor, setMenuFor] = useState<string | null>(null)
@@ -80,22 +84,21 @@ export default function FilesPage() {
   const [trash, setTrash] = useState(false)
   const [preview, setPreview] = useState<{ url: string; name: string; mime: string } | null>(null)
   const [previewError, setPreviewError] = useState(false)
-  const [openFolder, setOpenFolder] = useState<string | null>(null) // null = root
-  const [linkCopied, setLinkCopied] = useState<string | null>(null)
+  const [openFolder, setOpenFolder] = useState<string | null>(null)
   const [size, setSize] = useState<'sm' | 'md' | 'lg'>('md')
   const [folderCovers, setFolderCovers] = useState<Map<string, string>>(new Map())
   const [imageThumbs, setImageThumbs] = useState<Map<string, string>>(new Map())
+  const [shareTarget, setShareTarget] = useState<ShareTarget | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const folderInputRef = useRef<HTMLInputElement>(null)
 
-  // Compute folder covers (first image file in each folder) → signed URL.
+  // Folder covers — first renderable image in each folder
   useEffect(() => {
     if (!folders.length || !files.length) return
     const firstImage = new Map<string, FileRow>()
     for (const f of files) {
-      if (f.folder_id && catOf(f.mime_type) === 'image' && !isHeic(f) && !firstImage.has(f.folder_id)) {
+      if (f.folder_id && catOf(f.mime_type) === 'image' && !isHeic(f) && !firstImage.has(f.folder_id))
         firstImage.set(f.folder_id, f)
-      }
     }
     if (!firstImage.size) return
     let cancelled = false
@@ -113,10 +116,10 @@ export default function FilesPage() {
     return () => { cancelled = true }
   }, [files, folders])
 
-  // Lazy-load image thumbnails when in large-grid mode (Finder-like icon view).
+  // Image thumbnails — all view modes (grid + list), up to 60 images
   useEffect(() => {
-    if (size !== 'lg' || !files.length) return
-    const images = files.filter((f) => catOf(f.mime_type) === 'image' && !isHeic(f)).slice(0, 40)
+    if (!files.length) return
+    const images = files.filter((f) => catOf(f.mime_type) === 'image' && !isHeic(f)).slice(0, 60)
     const need = images.filter((f) => !imageThumbs.has(f.id))
     if (!need.length) return
     let cancelled = false
@@ -134,15 +137,11 @@ export default function FilesPage() {
       })
     })
     return () => { cancelled = true }
-  }, [size, files, imageThumbs])
+  }, [files]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Enable directory selection on the folder input (React doesn't type these attrs).
   useEffect(() => {
     const el = folderInputRef.current
-    if (el) {
-      el.setAttribute('webkitdirectory', '')
-      el.setAttribute('directory', '')
-    }
+    if (el) { el.setAttribute('webkitdirectory', ''); el.setAttribute('directory', '') }
   }, [])
 
   async function downloadFile(f: FileRow) {
@@ -151,51 +150,21 @@ export default function FilesPage() {
     if (url) window.open(url, '_blank')
   }
 
-  // Click a file → open a preview (images, video, PDF render inline; others fall back to download).
   async function openFile(f: FileRow) {
     setBusyId(f.id)
     const url = await getStoredFileUrl(f, 600).catch(() => '')
     setBusyId(null)
-    if (url) {
-      setPreviewError(false)
-      setPreview({ url, name: f.name, mime: f.mime_type || '' })
-    }
+    if (url) { setPreviewError(false); setPreview({ url, name: f.name, mime: f.mime_type || '' }) }
   }
 
-  async function shareFolder(folder: FolderRow) {
-    if (!user) return
-    const slug = Math.random().toString(36).slice(2, 10) + Date.now().toString(36)
-    const { error } = await supabase.from('shares').insert({
-      user_id: user.id,
-      folder_id: folder.id,
-      slug,
-      status: 'active',
-      visibility: 'public',
-      allow_download: true,
-    })
-    if (error) { setUploadMsg('Gagal bikin link: ' + error.message); return }
-    const link = `${window.location.origin}/s/?id=${slug}`
-    try {
-      await navigator.clipboard.writeText(link)
-      setLinkCopied('folder:' + folder.id)
-      setTimeout(() => setLinkCopied(null), 2500)
-    } catch {
-      window.prompt('Link folder publik:', link)
-    }
-  }
-
-  async function copyShareLink(f: FileRow) {
+  function openShareForFile(f: FileRow) {
     setMenuFor(null)
-    const url = await getStoredFileUrl(f, 86400).catch(() => '')
-    if (url) {
-      try {
-        await navigator.clipboard.writeText(url)
-        setLinkCopied(f.id)
-        setTimeout(() => setLinkCopied(null), 2000)
-      } catch {
-        window.prompt('Salin link berbagi (berlaku 24 jam):', url)
-      }
-    }
+    setShareTarget({ kind: 'file', id: f.id, name: f.name })
+  }
+
+  function openShareForFolder(folder: FolderRow, e?: React.MouseEvent) {
+    e?.stopPropagation()
+    setShareTarget({ kind: 'folder', id: folder.id, name: folder.name })
   }
 
   async function renameFile(f: FileRow) {
@@ -211,7 +180,6 @@ export default function FilesPage() {
   async function deleteFile(f: FileRow) {
     setMenuFor(null)
     setBusyId(f.id)
-    // Soft-delete → moves to recycle bin (restorable 30 days); storage_usage re-syncs via trigger.
     await supabase.from('files').update({ is_deleted: true, deleted_at: new Date().toISOString() }).eq('id', f.id)
     setBusyId(null)
     await loadData()
@@ -268,8 +236,6 @@ export default function FilesPage() {
     setUploading(true)
     let failed = 0
 
-    // Folder upload: items carry webkitRelativePath like "MyFolder/sub/file.jpg".
-    // Create the top-level folder once and file everything under it.
     let folderId: string | null = null
     const rel = (items[0] as File & { webkitRelativePath?: string })?.webkitRelativePath
     if (rel && rel.includes('/')) {
@@ -284,11 +250,14 @@ export default function FilesPage() {
         failed++
         continue
       }
+      setUploadProgress({ name: file.name, pct: 0 })
       try {
-        const { key, bucket } = await uploadFileToR2(file)
+        const { key, bucket } = await uploadFileToR2(file, (loaded, total) =>
+          setUploadProgress({ name: file.name, pct: Math.round((loaded / total) * 100) }),
+        )
         const { error: insErr } = await supabase.from('files').insert({
           user_id: user.id,
-          folder_id: folderId,
+          folder_id: openFolder ?? folderId,
           name: file.name,
           original_name: file.name,
           mime_type: file.type || 'application/octet-stream',
@@ -305,6 +274,7 @@ export default function FilesPage() {
     }
     await loadData()
     setUploading(false)
+    setUploadProgress(null)
     if (failed === 0) setUploadMsg('')
     if (fileInputRef.current) fileInputRef.current.value = ''
     if (folderInputRef.current) folderInputRef.current.value = ''
@@ -316,7 +286,6 @@ export default function FilesPage() {
     return m
   }, [files])
 
-  // Folder-aware filter: root shows files w/ no folder_id; inside a folder, only its files.
   const inFolderFiles = files.filter((f) =>
     openFolder === null ? !f.folder_id : f.folder_id === openFolder,
   )
@@ -326,13 +295,24 @@ export default function FilesPage() {
   )
   const openFolderName = openFolder ? folders.find((x) => x.id === openFolder)?.name : null
 
+  const gridCols =
+    size === 'sm' ? 'grid-cols-3 sm:grid-cols-5 lg:grid-cols-7 xl:grid-cols-9' :
+    size === 'lg' ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3' :
+    'grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5'
+
   return (
     <div
-      className="space-y-6 relative"
+      className="space-y-5 relative"
       onDragOver={(e) => { e.preventDefault(); if (!trash && !dragging) setDragging(true) }}
       onDragLeave={(e) => { e.preventDefault(); if (e.currentTarget === e.target) setDragging(false) }}
       onDrop={(e) => { e.preventDefault(); setDragging(false); if (!trash) handleFiles(e.dataTransfer.files) }}
     >
+      {/* ── Share modal ── */}
+      {shareTarget && user && (
+        <ShareModal target={shareTarget} userId={user.id} onClose={() => { setShareTarget(null); loadData() }} />
+      )}
+
+      {/* Drag overlay */}
       {dragging && !trash && (
         <div className="fixed inset-0 z-40 flex items-center justify-center pointer-events-none p-6" style={{ background: 'rgba(26,86,219,0.08)', backdropFilter: 'blur(2px)' }}>
           <div className="rounded-3xl border-2 border-dashed border-[#1A56DB] bg-white px-10 py-8 text-center shadow-xl">
@@ -343,6 +323,7 @@ export default function FilesPage() {
         </div>
       )}
 
+      {/* ── Page header ── */}
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between pt-2 gap-3">
         <div className="min-w-0 flex-1">
           {openFolder && !trash && (
@@ -351,89 +332,135 @@ export default function FilesPage() {
               File Saya
             </button>
           )}
-          <h1 className="font-display font-bold text-[#141110] text-xl tracking-tight truncate">{trash ? 'Sampah' : (openFolderName || 'File Saya')}</h1>
-          <p className="text-[#A8A29E] text-sm mt-0.5">{loading ? 'Memuat…' : trash ? `${files.length} file · pulih dalam ≤30 hari` : openFolder ? `${filtered.length} file dalam folder ini` : `${filtered.length} file · ${formatBytes(usedBytes)} digunakan`}</p>
+          <h1 className="font-display font-bold text-[#141110] text-xl tracking-tight truncate">
+            {trash ? 'Sampah' : (openFolderName || 'File Saya')}
+          </h1>
+          <p className="text-[#A8A29E] text-sm mt-0.5">
+            {loading ? 'Memuat…' : trash
+              ? `${files.length} file · pulih dalam ≤30 hari`
+              : openFolder
+              ? `${filtered.length} file dalam folder ini`
+              : `${filtered.length} file · ${formatBytes(usedBytes)} digunakan`}
+          </p>
         </div>
         <input ref={fileInputRef} type="file" multiple className="hidden" onChange={(e) => handleFiles(e.target.files)} />
         <input ref={folderInputRef} type="file" multiple className="hidden" onChange={(e) => handleFiles(e.target.files)} />
         <div className="flex items-center gap-2 flex-shrink-0">
-          <button onClick={() => { setTrash((t) => !t); setMenuFor(null) }} className={`flex items-center gap-2 text-sm font-semibold px-3.5 py-2.5 rounded-xl border transition-all ${trash ? 'bg-[#EBF0FF] border-[#C2D0F8] text-[#1A56DB]' : 'bg-white border-[#E5E2DD] text-[#6B6560] hover:border-[#C2BDB8] hover:text-[#141110]'}`}>
+          <button onClick={() => { setTrash((t) => !t); setMenuFor(null) }} className={`flex items-center gap-2 text-sm font-semibold px-3 py-2.5 rounded-xl border transition-all ${trash ? 'bg-[#EBF0FF] border-[#C2D0F8] text-[#1A56DB]' : 'bg-white border-[#E5E2DD] text-[#6B6560] hover:border-[#C2BDB8] hover:text-[#141110]'}`}>
             <IcoTrash /> <span className="hidden sm:inline">{trash ? 'Kembali' : 'Sampah'}</span>
           </button>
           {!trash && (
             <>
-              <button onClick={() => folderInputRef.current?.click()} disabled={uploading} className="flex items-center gap-2 bg-white border border-[#E5E2DD] text-[#6B6560] text-sm font-semibold px-3.5 py-2.5 rounded-xl hover:border-[#C2BDB8] hover:text-[#141110] transition-all disabled:opacity-60">
+              <button onClick={() => folderInputRef.current?.click()} disabled={uploading} className="flex items-center gap-2 bg-white border border-[#E5E2DD] text-[#6B6560] text-sm font-semibold px-3 py-2.5 rounded-xl hover:border-[#C2BDB8] hover:text-[#141110] transition-all disabled:opacity-60">
                 <IcoFolder /> <span className="hidden sm:inline">Folder</span>
               </button>
               <button onClick={() => fileInputRef.current?.click()} disabled={uploading} className="flex items-center gap-2 text-white text-sm font-semibold px-3.5 sm:px-4 py-2.5 rounded-xl hover:opacity-90 hover:-translate-y-px hover:shadow-lg hover:shadow-[#1A56DB]/20 transition-all duration-200 disabled:opacity-60 disabled:hover:translate-y-0" style={{ background: 'linear-gradient(135deg, #1A56DB, #2B7FD4)' }}>
-                {uploading ? (<><svg className="animate-spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10" strokeOpacity="0.25" /><path d="M12 2a10 10 0 0 1 10 10" /></svg> <span className="hidden sm:inline">Mengupload…</span></>) : (<><IcoUpload /> <span className="hidden sm:inline">Upload</span></>)}
+                {uploading
+                  ? <><svg className="animate-spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10" strokeOpacity="0.25" /><path d="M12 2a10 10 0 0 1 10 10" /></svg><span className="hidden sm:inline">Upload…</span></>
+                  : <><IcoUpload /><span className="hidden sm:inline">Upload</span></>}
               </button>
             </>
           )}
         </div>
       </div>
 
-      {uploadMsg && (
+      {/* Upload progress bar */}
+      {uploadProgress && (
+        <div className="rounded-xl border border-[#C2D0F8] bg-[#EBF0FF] px-4 py-3">
+          <div className="flex items-center justify-between mb-1.5">
+            <p className="text-[#1A56DB] text-xs font-semibold truncate max-w-[70%]">{uploadProgress.name}</p>
+            <span className="text-[#1A56DB] text-xs font-bold">{uploadProgress.pct}%</span>
+          </div>
+          <div className="h-1.5 bg-[#C2D0F8] rounded-full overflow-hidden">
+            <div className="h-full rounded-full transition-all duration-200" style={{ width: `${uploadProgress.pct}%`, background: 'linear-gradient(90deg, #1A56DB, #60A5FA)' }} />
+          </div>
+        </div>
+      )}
+
+      {uploadMsg && !uploadProgress && (
         <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-xs text-amber-700 font-medium">{uploadMsg}</div>
       )}
 
+      {/* ── Search ── */}
       <div className="relative">
         <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[#A8A29E]"><IcoSearch /></span>
         <input type="text" placeholder="Cari file…" value={search} onChange={(e) => setSearch(e.target.value)} className="w-full bg-white border border-[#E5E2DD] rounded-xl pl-10 pr-4 py-3 text-sm text-[#141110] placeholder-[#C2BDB8] focus:outline-none focus:border-[#1A56DB]/50 focus:ring-2 focus:ring-[#1A56DB]/10 transition-all" />
       </div>
 
+      {/* ── Folders ── */}
       {!trash && !openFolder && (
-      <div>
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="font-display font-semibold text-[#141110] text-sm">Folder</h2>
-          <button onClick={() => setShowFolderInput((v) => !v)} className="text-[#1A56DB] text-xs font-semibold hover:opacity-75 transition-opacity">+ Folder Baru</button>
-        </div>
-        {showFolderInput && (
-          <div className="flex gap-2 mb-3">
-            <input autoFocus value={newFolder} onChange={(e) => setNewFolder(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') createFolder(); if (e.key === 'Escape') setShowFolderInput(false) }} placeholder="Nama folder…" className="flex-1 bg-white border border-[#E5E2DD] rounded-xl px-4 py-2.5 text-sm text-[#141110] placeholder-[#C2BDB8] focus:outline-none focus:border-[#1A56DB]/50 focus:ring-2 focus:ring-[#1A56DB]/10" />
-            <button onClick={createFolder} className="text-white text-sm font-semibold px-4 py-2.5 rounded-xl whitespace-nowrap" style={{ background: 'linear-gradient(135deg, #1A56DB, #2B7FD4)' }}>Buat</button>
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="font-display font-semibold text-[#141110] text-sm">Folder</h2>
+            <button onClick={() => setShowFolderInput((v) => !v)} className="text-[#1A56DB] text-xs font-semibold hover:opacity-75 transition-opacity">+ Folder Baru</button>
           </div>
-        )}
-        {folders.length > 0 ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            {folders.slice(0, 8).map((folder) => {
-              const cover = folderCovers.get(folder.id)
-              const justCopied = linkCopied === 'folder:' + folder.id
-              return (
-                <div key={folder.id} role="button" tabIndex={0} onClick={() => setOpenFolder(folder.id)} onKeyDown={(e) => { if (e.key === 'Enter') setOpenFolder(folder.id) }} className="bg-white border border-[#E5E2DD] rounded-xl text-left hover:border-[#C2D0F8] hover:shadow-[0_4px_16px_rgba(26,86,219,0.08)] transition-all duration-200 group cursor-pointer overflow-hidden relative">
-                  {cover ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={cover} alt="" className="w-full h-20 object-cover" />
-                  ) : (
-                    <div className="w-full h-20 flex items-center justify-center bg-[#EBF0FF] text-[#1A56DB]"><IcoFolder /></div>
-                  )}
-                  <button onClick={(e) => { e.stopPropagation(); shareFolder(folder) }} title={justCopied ? 'Link tersalin' : 'Bagikan folder (link publik)'} className={`absolute top-2 right-2 w-7 h-7 rounded-lg flex items-center justify-center shadow-sm transition-all ${justCopied ? 'bg-[#22C55E] text-white' : 'bg-white/95 border border-[#E5E2DD] text-[#6B6560] hover:text-[#1A56DB] opacity-0 group-hover:opacity-100'}`}>
-                    {justCopied ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg> : <IcoShareLink />}
-                  </button>
-                  <div className="p-3">
-                    <p className="font-display font-semibold text-[#141110] text-xs leading-snug truncate">{folder.name}</p>
-                    <p className="text-[#A8A29E] text-[10px] mt-1">{folderCounts.get(folder.id) ?? 0} file</p>
+          {showFolderInput && (
+            <div className="flex gap-2 mb-3">
+              <input autoFocus value={newFolder} onChange={(e) => setNewFolder(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') createFolder(); if (e.key === 'Escape') setShowFolderInput(false) }} placeholder="Nama folder…" className="flex-1 bg-white border border-[#E5E2DD] rounded-xl px-4 py-2.5 text-sm text-[#141110] placeholder-[#C2BDB8] focus:outline-none focus:border-[#1A56DB]/50 focus:ring-2 focus:ring-[#1A56DB]/10" />
+              <button onClick={createFolder} className="text-white text-sm font-semibold px-4 py-2.5 rounded-xl whitespace-nowrap" style={{ background: 'linear-gradient(135deg, #1A56DB, #2B7FD4)' }}>Buat</button>
+            </div>
+          )}
+          {folders.length > 0 ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+              {folders.map((folder) => {
+                const cover = folderCovers.get(folder.id)
+                return (
+                  <div
+                    key={folder.id}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => setOpenFolder(folder.id)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') setOpenFolder(folder.id) }}
+                    className="bg-white border border-[#E5E2DD] rounded-2xl text-left hover:border-[#C2D0F8] hover:shadow-[0_4px_16px_rgba(26,86,219,0.08)] transition-all duration-200 group cursor-pointer overflow-hidden relative"
+                  >
+                    {cover ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={cover} alt="" className="w-full h-24 object-cover" />
+                    ) : (
+                      <div className="w-full h-24 flex items-center justify-center bg-gradient-to-br from-[#EBF0FF] to-[#dde7fb] text-[#1A56DB]">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+                        </svg>
+                      </div>
+                    )}
+                    {/* Share button — appears on hover */}
+                    <button
+                      onClick={(e) => openShareForFolder(folder, e)}
+                      title="Bagikan folder"
+                      className="absolute top-2 right-2 w-7 h-7 rounded-lg flex items-center justify-center shadow-sm transition-all bg-white/95 border border-[#E5E2DD] text-[#6B6560] hover:text-[#1A56DB] hover:border-[#C2D0F8] opacity-0 group-hover:opacity-100"
+                    >
+                      <IcoShare />
+                    </button>
+                    <div className="p-3">
+                      <p className="font-display font-semibold text-[#141110] text-xs leading-snug truncate">{folder.name}</p>
+                      <p className="text-[#A8A29E] text-[10px] mt-0.5">{folderCounts.get(folder.id) ?? 0} file</p>
+                    </div>
                   </div>
-                </div>
-              )
-            })}
-          </div>
-        ) : (
-          !showFolderInput && <p className="text-[#A8A29E] text-xs">Belum ada folder. Buat folder pertama untuk merapikan file.</p>
-        )}
-      </div>
+                )
+              })}
+            </div>
+          ) : (
+            !showFolderInput && <p className="text-[#A8A29E] text-xs">Belum ada folder. Klik "+ Folder Baru" untuk membuat.</p>
+          )}
+        </div>
       )}
 
+      {/* ── Filter + view toggle ── */}
       <div className="flex items-center justify-between gap-3">
-        <div className="flex gap-1.5 overflow-x-auto pb-1 flex-1">
+        <div className="flex gap-1.5 overflow-x-auto pb-0.5 flex-1 scrollbar-hide">
           {FILTERS.map(([key, label]) => (
-            <button key={key} onClick={() => setFilter(key)} className={`flex-shrink-0 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 ${filter === key ? 'bg-[#1A56DB] text-white shadow-sm' : 'bg-white text-[#6B6560] border border-[#E5E2DD] hover:border-[#C2D0F8] hover:text-[#141110]'}`}>{label}</button>
+            <button key={key} onClick={() => setFilter(key)} className={`flex-shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 ${filter === key ? 'bg-[#1A56DB] text-white shadow-sm' : 'bg-white text-[#6B6560] border border-[#E5E2DD] hover:border-[#C2D0F8] hover:text-[#141110]'}`}>{label}</button>
           ))}
         </div>
         <div className="flex gap-1 flex-shrink-0">
-          {([['list', IcoList], ['grid', IcoGrid]] as const).map(([v, IconCmp]) => (
-            <button key={v} onClick={() => setView(v as 'grid' | 'list')} title={v === 'list' ? 'List' : 'Grid'} className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${view === v ? 'bg-[#EBF0FF] text-[#1A56DB]' : 'bg-white text-[#A8A29E] border border-[#E5E2DD] hover:text-[#141110]'}`}><IconCmp /></button>
-          ))}
+          {(['list', 'grid'] as const).map((v) => {
+            const IconCmp = v === 'list' ? IcoList : IcoGrid
+            return (
+              <button key={v} onClick={() => setView(v)} title={v === 'list' ? 'List' : 'Grid'} className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${view === v ? 'bg-[#EBF0FF] text-[#1A56DB]' : 'bg-white text-[#A8A29E] border border-[#E5E2DD] hover:text-[#141110]'}`}>
+                <IconCmp />
+              </button>
+            )
+          })}
           {view === 'grid' && (
             <div className="flex gap-1 ml-1 pl-2 border-l border-[#E5E2DD]">
               {([['sm', 8], ['md', 12], ['lg', 16]] as const).map(([s, px]) => (
@@ -446,48 +473,65 @@ export default function FilesPage() {
         </div>
       </div>
 
+      {/* ── File content ── */}
       {loading ? (
         <div className="bg-white border border-[#E5E2DD] rounded-2xl py-16 text-center text-[#A8A29E] text-sm">Memuat file…</div>
-      ) : files.length === 0 ? (
+      ) : filtered.length === 0 ? (
         <div className="bg-white border border-[#E5E2DD] rounded-2xl py-16 text-center">
-          {trash ? (
-            <>
-              <div className="w-14 h-14 rounded-2xl bg-[#F2F0ED] flex items-center justify-center mx-auto mb-4 text-[#A8A29E]"><IcoTrash /></div>
-              <p className="text-[#141110] text-sm font-semibold mb-1">Sampah kosong</p>
-              <p className="text-[#A8A29E] text-xs">File yang kamu hapus muncul di sini & bisa dipulihkan ≤30 hari.</p>
-            </>
+          {files.length === 0 ? (
+            trash ? (
+              <>
+                <div className="w-14 h-14 rounded-2xl bg-[#F2F0ED] flex items-center justify-center mx-auto mb-4 text-[#A8A29E]"><IcoTrash /></div>
+                <p className="text-[#141110] text-sm font-semibold mb-1">Sampah kosong</p>
+                <p className="text-[#A8A29E] text-xs">File terhapus bisa dipulihkan ≤30 hari.</p>
+              </>
+            ) : (
+              <>
+                <div className="w-14 h-14 rounded-2xl bg-[#EBF0FF] flex items-center justify-center mx-auto mb-4 text-[#1A56DB]"><IcoUpload /></div>
+                <p className="text-[#141110] text-sm font-semibold mb-1">Belum ada file</p>
+                <p className="text-[#A8A29E] text-xs mb-5">Drag & drop atau klik Upload</p>
+                <button onClick={() => fileInputRef.current?.click()} disabled={uploading} className="inline-flex items-center gap-2 text-white text-sm font-semibold px-5 py-2.5 rounded-xl hover:opacity-90 transition-all disabled:opacity-60" style={{ background: 'linear-gradient(135deg, #1A56DB, #2B7FD4)' }}>
+                  <IcoUpload /> Upload File
+                </button>
+              </>
+            )
           ) : (
-            <>
-              <div className="w-14 h-14 rounded-2xl bg-[#EBF0FF] flex items-center justify-center mx-auto mb-4 text-[#1A56DB]"><IcoUpload /></div>
-              <p className="text-[#141110] text-sm font-semibold mb-1">Belum ada file</p>
-              <p className="text-[#A8A29E] text-xs mb-5">File yang kamu upload akan muncul di sini.</p>
-              <button onClick={() => fileInputRef.current?.click()} disabled={uploading} className="inline-flex items-center gap-2 text-white text-sm font-semibold px-5 py-2.5 rounded-xl hover:opacity-90 transition-all disabled:opacity-60" style={{ background: 'linear-gradient(135deg, #1A56DB, #2B7FD4)' }}>
-                <IcoUpload /> {uploading ? 'Mengupload…' : 'Upload File'}
-              </button>
-            </>
+            <p className="text-[#A8A29E] text-sm">Tidak ada file ditemukan</p>
           )}
         </div>
       ) : view === 'list' ? (
+        /* ── LIST VIEW ── */
         <div className="bg-white border border-[#E5E2DD] rounded-2xl">
-          {filtered.length === 0 ? (
-            <div className="py-16 text-center text-[#A8A29E] text-sm">Tidak ada file ditemukan</div>
-          ) : filtered.map((file, i) => {
+          {filtered.map((file, i) => {
             const { Icon: IconCmp, accent, bg } = FILE_TYPE_MAP[catOf(file.mime_type)]
+            const thumb = catOf(file.mime_type) === 'image' && !isHeic(file) ? imageThumbs.get(file.id) : null
             return (
-              <div key={file.id} onClick={() => { if (!trash) openFile(file) }} className={`flex items-center gap-3.5 px-5 py-3.5 ${trash ? '' : 'cursor-pointer'} hover:bg-[#FAFAF8] transition-colors ${i < filtered.length - 1 ? 'border-b border-[#F2F0ED]' : ''} ${busyId === file.id ? 'opacity-50' : ''}`}>
-                <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: bg, color: accent }}><IconCmp /></div>
+              <div
+                key={file.id}
+                onClick={() => { if (!trash) openFile(file) }}
+                className={`flex items-center gap-3 sm:gap-3.5 px-3.5 sm:px-5 py-3 sm:py-3.5 ${trash ? '' : 'cursor-pointer'} hover:bg-[#FAFAF8] transition-colors ${i < filtered.length - 1 ? 'border-b border-[#F2F0ED]' : ''} ${busyId === file.id ? 'opacity-50' : ''}`}
+              >
+                {/* Thumbnail or type icon */}
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 overflow-hidden" style={{ background: bg, color: accent }}>
+                  {thumb
+                    // eslint-disable-next-line @next/next/no-img-element
+                    ? <img src={thumb} alt="" className="w-full h-full object-cover" />
+                    : <IconCmp />}
+                </div>
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-[#141110] text-sm truncate">{file.name}</p>
                   <p className="text-[#A8A29E] text-xs mt-0.5">{formatBytes(file.size_bytes)} · {formatRelativeDate(file.created_at)}</p>
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
-                  {sharedIds.has(file.id) && <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[#EBF0FF] text-[#1A56DB]"><IcoLink /> Dibagikan</span>}
+                  {sharedIds.has(file.id) && (
+                    <span className="hidden sm:flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[#EBF0FF] text-[#1A56DB]"><IcoLink /> Dibagikan</span>
+                  )}
                   <div className="relative">
                     <button onClick={() => setMenuFor(menuFor === file.id ? null : file.id)} className="text-[#A8A29E] hover:text-[#141110] hover:bg-[#F2F0ED] rounded-lg p-1.5 transition-colors"><IcoMore /></button>
                     {menuFor === file.id && (
                       <>
                         <div className="fixed inset-0 z-10" onClick={() => setMenuFor(null)} />
-                        <div className="absolute right-0 top-9 z-20 w-44 bg-white border border-[#E5E2DD] rounded-xl shadow-[0_8px_28px_rgba(20,17,16,0.12)] py-1.5 overflow-hidden">
+                        <div className="absolute right-0 top-9 z-20 w-48 bg-white border border-[#E5E2DD] rounded-xl shadow-[0_8px_28px_rgba(20,17,16,0.12)] py-1.5">
                           {trash ? (
                             <>
                               <button onClick={() => restoreFile(file)} className="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-[#141110] hover:bg-[#FAFAF8] transition-colors"><IcoRestore /> Pulihkan</button>
@@ -497,7 +541,7 @@ export default function FilesPage() {
                             <>
                               <button onClick={() => openFile(file)} className="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-[#141110] hover:bg-[#FAFAF8] transition-colors"><IcoEye /> Lihat</button>
                               <button onClick={() => downloadFile(file)} className="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-[#141110] hover:bg-[#FAFAF8] transition-colors"><IcoDownload2 /> Download</button>
-                              <button onClick={() => copyShareLink(file)} className="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-[#141110] hover:bg-[#FAFAF8] transition-colors"><IcoShareLink /> {linkCopied === file.id ? 'Link tersalin ✓' : 'Salin link (24 jam)'}</button>
+                              <button onClick={() => openShareForFile(file)} className="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-[#141110] hover:bg-[#FAFAF8] transition-colors"><IcoShare /> Bagikan</button>
                               <button onClick={() => renameFile(file)} className="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-[#141110] hover:bg-[#FAFAF8] transition-colors"><IcoRename /> Ubah nama</button>
                               <button onClick={() => deleteFile(file)} className="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-[#DC2626] hover:bg-red-50 transition-colors"><IcoTrash /> Hapus</button>
                             </>
@@ -512,36 +556,79 @@ export default function FilesPage() {
           })}
         </div>
       ) : (
-        <div className={`grid gap-3 ${size === 'sm' ? 'grid-cols-3 sm:grid-cols-5 lg:grid-cols-7 xl:grid-cols-9' : size === 'lg' ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3' : 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5'}`}>
+        /* ── GRID VIEW ── */
+        <div className={`grid gap-3 ${gridCols}`}>
           {filtered.map((file) => {
             const cat = catOf(file.mime_type)
             const { Icon: IconCmp, accent, bg } = FILE_TYPE_MAP[cat]
-            const thumb = cat === 'image' && !isHeic(file) ? imageThumbs.get(file.id) : null
+            const canThumb = cat === 'image' && !isHeic(file)
+            const thumb = canThumb ? imageThumbs.get(file.id) : null
+            const thumbH = size === 'lg' ? 'h-36' : 'h-24'
             return (
-              <button key={file.id} onClick={() => (trash ? restoreFile(file) : openFile(file))} title={trash ? 'Klik untuk pulihkan' : 'Klik untuk lihat'} className={`bg-white border border-[#E5E2DD] rounded-xl text-left cursor-pointer hover:border-[#C2D0F8] hover:shadow-[0_4px_16px_rgba(26,86,219,0.08)] transition-all duration-200 ${busyId === file.id ? 'opacity-50' : ''} ${size === 'sm' ? 'p-2.5' : size === 'lg' ? 'p-3' : 'p-4'}`}>
-                {size === 'lg' ? (
-                  thumb ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={thumb} alt={file.name} className="w-full h-32 object-cover rounded-lg mb-3" />
-                  ) : (
-                    <div className="w-full h-32 rounded-lg flex items-center justify-center mb-3" style={{ background: bg }}>
-                      <div style={{ color: accent, transform: 'scale(1.8)' }}><IconCmp /></div>
-                    </div>
-                  )
-                ) : (
-                  <div className={`rounded-xl flex items-center justify-center ${size === 'sm' ? 'w-8 h-8 mb-1.5' : 'w-10 h-10 mb-3'}`} style={{ background: bg, color: accent }}><IconCmp /></div>
-                )}
-                <p className={`font-medium text-[#141110] truncate ${size === 'sm' ? 'text-[11px] leading-tight' : size === 'lg' ? 'text-sm' : 'text-xs'}`}>{file.name}</p>
-                {size !== 'sm' && <p className="text-[#A8A29E] text-[10px] mt-1">{formatBytes(file.size_bytes)}</p>}
-                {size !== 'sm' && sharedIds.has(file.id) && <span className="mt-2 flex items-center gap-1 w-fit px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-[#EBF0FF] text-[#1A56DB]"><IcoLink /> Dibagikan</span>}
-              </button>
+              <div
+                key={file.id}
+                className={`bg-white border border-[#E5E2DD] rounded-2xl text-left cursor-pointer hover:border-[#C2D0F8] hover:shadow-[0_4px_16px_rgba(26,86,219,0.08)] transition-all duration-200 group relative overflow-hidden ${busyId === file.id ? 'opacity-50' : ''}`}
+              >
+                {/* Preview area (sm: icon only; md/lg: thumbnail/icon block) */}
+                {size !== 'sm' ? (
+                  <button onClick={() => (trash ? restoreFile(file) : openFile(file))} className="block w-full">
+                    {thumb ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={thumb} alt={file.name} className={`w-full ${thumbH} object-cover`} />
+                    ) : (
+                      <div className={`w-full ${thumbH} flex items-center justify-center`} style={{ background: bg }}>
+                        <div style={{ color: accent, transform: size === 'lg' ? 'scale(2)' : 'scale(1.5)' }}><IconCmp /></div>
+                      </div>
+                    )}
+                  </button>
+                ) : null}
+                <div className={size === 'sm' ? 'p-2' : 'px-3 pb-3'}>
+                  {size === 'sm' && (
+                    <button onClick={() => (trash ? restoreFile(file) : openFile(file))} className="block w-full mb-1.5">
+                      <div className="w-9 h-9 rounded-xl flex items-center justify-center mx-auto" style={{ background: bg, color: accent }}><IconCmp /></div>
+                    </button>
+                  )}
+                  <div className={`flex items-start ${size === 'sm' ? 'justify-center' : 'justify-between'} gap-1 ${size !== 'sm' ? 'pt-2' : ''}`}>
+                    <button onClick={() => (trash ? restoreFile(file) : openFile(file))} className="flex-1 min-w-0 text-left">
+                      <p className={`font-medium text-[#141110] truncate leading-snug ${size === 'sm' ? 'text-[10px] text-center' : size === 'lg' ? 'text-sm' : 'text-xs'}`}>{file.name}</p>
+                      {size !== 'sm' && <p className="text-[#A8A29E] text-[10px] mt-0.5">{formatBytes(file.size_bytes)}</p>}
+                    </button>
+                    {size !== 'sm' && !trash && (
+                      <div className="relative flex-shrink-0">
+                        <button
+                          onClick={() => setMenuFor(menuFor === file.id ? null : file.id)}
+                          className="w-6 h-6 rounded-lg flex items-center justify-center text-[#A8A29E] hover:text-[#141110] hover:bg-[#F2F0ED] transition-colors opacity-0 group-hover:opacity-100"
+                        >
+                          <IcoMore />
+                        </button>
+                        {menuFor === file.id && (
+                          <>
+                            <div className="fixed inset-0 z-10" onClick={() => setMenuFor(null)} />
+                            <div className="absolute right-0 top-7 z-20 w-44 bg-white border border-[#E5E2DD] rounded-xl shadow-[0_8px_28px_rgba(20,17,16,0.12)] py-1.5">
+                              <button onClick={() => openFile(file)} className="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-[#141110] hover:bg-[#FAFAF8]"><IcoEye /> Lihat</button>
+                              <button onClick={() => downloadFile(file)} className="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-[#141110] hover:bg-[#FAFAF8]"><IcoDownload2 /> Download</button>
+                              <button onClick={() => openShareForFile(file)} className="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-[#141110] hover:bg-[#FAFAF8]"><IcoShare /> Bagikan</button>
+                              <button onClick={() => renameFile(file)} className="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-[#141110] hover:bg-[#FAFAF8]"><IcoRename /> Ubah nama</button>
+                              <button onClick={() => deleteFile(file)} className="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-[#DC2626] hover:bg-red-50"><IcoTrash /> Hapus</button>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  {size !== 'sm' && sharedIds.has(file.id) && (
+                    <span className="mt-1.5 flex items-center gap-1 w-fit px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-[#EBF0FF] text-[#1A56DB]"><IcoLink /> Dibagikan</span>
+                  )}
+                </div>
+              </div>
             )
           })}
         </div>
       )}
 
+      {/* ── Preview modal ── */}
       {preview && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-8" style={{ background: 'rgba(11,21,48,0.85)', backdropFilter: 'blur(4px)' }} onClick={() => setPreview(null)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-8" style={{ background: 'rgba(11,21,48,0.85)', backdropFilter: 'blur(4px)' }} onClick={() => setPreview(null)}>
           <div className="relative w-full max-w-4xl" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-3 gap-4">
               <p className="text-white font-medium text-sm truncate">{preview.name}</p>
@@ -551,23 +638,21 @@ export default function FilesPage() {
             </div>
             {(() => {
               const m = preview.mime.toLowerCase()
-              const isHeic = /heic|heif/.test(m) || /\.heic$|\.heif$/i.test(preview.name)
-              const isImage = m.startsWith('image/') && !isHeic
+              const heic = /heic|heif/.test(m) || /\.heic$|\.heif$/i.test(preview.name)
+              const isImage = m.startsWith('image/') && !heic
               const isVideo = m.startsWith('video/')
               const isAudio = m.startsWith('audio/')
               const isPdf = m === 'application/pdf' || /\.pdf$/i.test(preview.name)
-              if (isImage && !previewError) {
-                // eslint-disable-next-line @next/next/no-img-element
+              if (isImage && !previewError)
                 return <img src={preview.url} alt={preview.name} onError={() => setPreviewError(true)} className="w-full max-h-[80vh] object-contain rounded-xl" />
-              }
               if (isVideo) return <video src={preview.url} controls autoPlay className="w-full max-h-[80vh] rounded-xl bg-black" />
               if (isAudio) return <div className="bg-white rounded-2xl p-8"><audio src={preview.url} controls autoPlay className="w-full" /></div>
               if (isPdf) return <iframe src={preview.url} title={preview.name} className="w-full rounded-xl bg-white" style={{ height: '80vh' }} />
               return (
                 <div className="bg-white rounded-2xl p-10 text-center">
                   <div className="w-16 h-16 rounded-2xl bg-[#EBF0FF] flex items-center justify-center mx-auto mb-4 text-[#1A56DB]"><IcoDoc /></div>
-                  <p className="font-display font-bold text-[#141110] text-base mb-1">{isHeic ? 'Format HEIC' : 'Preview tidak tersedia'}</p>
-                  <p className="text-[#A8A29E] text-sm mb-6 max-w-xs mx-auto">{isHeic ? 'Browser belum bisa menampilkan foto HEIC (format iPhone). Download untuk melihatnya.' : 'Tipe file ini tidak bisa dipratinjau langsung di browser.'}</p>
+                  <p className="font-display font-bold text-[#141110] text-base mb-1">{heic ? 'Format HEIC' : 'Preview tidak tersedia'}</p>
+                  <p className="text-[#A8A29E] text-sm mb-6 max-w-xs mx-auto">{heic ? 'Browser belum bisa menampilkan foto HEIC. Download untuk melihatnya.' : 'Tipe file ini tidak bisa dipratinjau langsung di browser.'}</p>
                   <a href={preview.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 text-white text-sm font-semibold px-5 py-2.5 rounded-xl hover:opacity-90 transition-all" style={{ background: 'linear-gradient(135deg, #1A56DB, #2B7FD4)' }}><IcoDownload2 /> Download &amp; lihat</a>
                 </div>
               )

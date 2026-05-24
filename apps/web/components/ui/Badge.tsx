@@ -32,7 +32,7 @@ export function Badge({
 
 /** Plan pill (free/plus/pro/ultra) with consistent brand colors. */
 export function PlanBadge({ plan, className = '' }: { plan: string; className?: string }) {
-  const p = planColor[plan?.toLowerCase()] ?? planColor.free
+  const p = (planColor[plan?.toLowerCase()] ?? planColor['free'])!
   return (
     <span
       className={`inline-flex items-center text-xs font-bold px-2.5 py-1 rounded-full ${className}`}

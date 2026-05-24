@@ -166,8 +166,8 @@ export default function UserDashboard() {
         ) : (
           <div className="space-y-0.5">
             {files.map((file) => {
-              const meta = FILE_TYPES[catOf(file.mime_type)]
-              const { Icon: I, accent, bg } = meta
+              const meta = FILE_TYPES[catOf(file.mime_type)] ?? FILE_TYPES['document']!
+              const { Icon: I, accent, bg } = meta!
               return (
                 <div key={file.id} className="flex items-center gap-3.5 py-3 rounded-xl hover:bg-[#F2F0ED] transition-colors cursor-pointer px-2">
                   <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: bg, color: accent }}><I /></div>

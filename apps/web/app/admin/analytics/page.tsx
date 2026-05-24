@@ -32,14 +32,14 @@ export default function AdminAnalyticsPage() {
       const keys: string[] = []
       for (let i = 5; i >= 0; i--) {
         const m = new Date(now.getFullYear(), now.getMonth() - i, 1)
-        labels.push(MONTHS[m.getMonth()])
+        labels.push(MONTHS[m.getMonth()]!)
         keys.push(`${m.getFullYear()}-${m.getMonth()}`)
       }
       const counts = keys.map(() => 0)
       ;((fileRows.data ?? []) as { created_at: string }[]).forEach((f) => {
         const d = new Date(f.created_at)
         const idx = keys.indexOf(`${d.getFullYear()}-${d.getMonth()}`)
-        if (idx >= 0) counts[idx]++
+        if (idx >= 0) counts[idx]!++
       })
       setUploads({ labels, counts })
       setLoading(false)

@@ -21,7 +21,7 @@ function iconFor(mime: string) {
 
 function Viewer() {
   const sp = useSearchParams()
-  const slug = sp.get('id') || ''
+  const slug = sp?.get('id') || ''
   const [state, setState] = useState<{ loading: boolean; share: ShareRow | null; folder: FolderRow | null; files: FileRow[] }>({ loading: true, share: null, folder: null, files: [] })
   const [preview, setPreview] = useState<{ url: string; name: string; mime: string } | null>(null)
   const [previewError, setPreviewError] = useState(false)

@@ -78,9 +78,9 @@ export default function HistoryPage() {
       const rows = (f.data ?? []) as { size_bytes: number; created_at: string }[]
       const now = new Date()
       const labels: string[] = [], keys: string[] = []
-      for (let i = 5; i >= 0; i--) { const m = new Date(now.getFullYear(), now.getMonth() - i, 1); labels.push(MONTHS[m.getMonth()]); keys.push(`${m.getFullYear()}-${m.getMonth()}`) }
+      for (let i = 5; i >= 0; i--) { const m = new Date(now.getFullYear(), now.getMonth() - i, 1); labels.push(MONTHS[m.getMonth()]!); keys.push(`${m.getFullYear()}-${m.getMonth()}`) }
       const monthlyBytes = keys.map(() => 0)
-      rows.forEach((r) => { const d = new Date(r.created_at); const idx = keys.indexOf(`${d.getFullYear()}-${d.getMonth()}`); if (idx >= 0) monthlyBytes[idx] += r.size_bytes ?? 0 })
+      rows.forEach((r) => { const d = new Date(r.created_at); const idx = keys.indexOf(`${d.getFullYear()}-${d.getMonth()}`); if (idx >= 0) monthlyBytes[idx]! += r.size_bytes ?? 0 })
       let cum = 0
       const cumGb = monthlyBytes.map((b) => { cum += b; return cum / 1e9 })
       const uploadBytes = rows.reduce((a, r) => a + (r.size_bytes ?? 0), 0)

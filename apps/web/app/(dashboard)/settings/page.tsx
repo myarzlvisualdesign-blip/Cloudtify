@@ -20,16 +20,24 @@ function IcoCopy() { return <svg {...si} stroke="currentColor"><rect x="9" y="9"
 
 function Toggle({ value, onChange }: { value: boolean; onChange: (v: boolean) => void }) {
   return (
-    <button onClick={() => onChange(!value)} className="relative w-11 h-6 rounded-full transition-all duration-200 flex-shrink-0" style={{ background: value ? '#1A56DB' : '#E5E2DD' }}>
+    <button
+      role="switch"
+      aria-checked={value}
+      onClick={() => onChange(!value)}
+      className="relative w-11 h-6 rounded-full transition-all duration-200 flex-shrink-0 focus:outline-none focus:ring-2 focus:ring-[#1A56DB]/40"
+      style={{ background: value ? '#1A56DB' : '#E5E2DD' }}
+    >
       <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow-sm transition-all duration-200 ${value ? 'left-5' : 'left-0.5'}`} />
     </button>
   )
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+function Card({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="bg-white border border-[#E5E2DD] rounded-2xl overflow-hidden">
-      <div className="px-5 py-4 border-b border-[#F2F0ED]"><h3 className="font-display font-semibold text-[#141110] text-sm">{title}</h3></div>
+      <div className="px-5 py-4 border-b border-[#F2F0ED]">
+        <h3 className="font-display font-semibold text-[#141110] text-sm">{title}</h3>
+      </div>
       <div className="p-5">{children}</div>
     </div>
   )
@@ -88,7 +96,7 @@ export default function SettingsPage() {
     if (!user?.email) return
     setPwMsg('Mengirim…')
     const { error } = await supabase.auth.resetPasswordForEmail(user.email, { redirectTo: `${window.location.origin}/auth/login/` })
-    setPwMsg(error ? 'Gagal mengirim email.' : 'Email reset password terkirim ✓')
+    setPwMsg(error ? 'Gagal mengirim email.' : 'Email reset terkirim ✓')
   }
 
   function copyReferral() {
@@ -109,145 +117,183 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="space-y-6 max-w-2xl">
+    <div className="space-y-6 pb-8">
+      {/* Page title */}
       <div className="pt-2">
         <h1 className="font-display font-bold text-[#141110] text-xl tracking-tight">Pengaturan</h1>
         <p className="text-[#A8A29E] text-sm mt-0.5">Kelola akun dan preferensi kamu</p>
       </div>
 
-      <Section title="Profil">
-        <div className="flex items-center gap-4 mb-5">
-          <div className="relative flex-shrink-0">
-            <input ref={avatarRef} type="file" accept="image/*" className="hidden" onChange={(e) => uploadAvatar(e.target.files?.[0])} />
-            <button onClick={() => avatarRef.current?.click()} title="Ubah foto profil" className="w-14 h-14 rounded-full overflow-hidden flex items-center justify-center text-white font-display font-bold text-xl shadow-lg" style={{ background: 'linear-gradient(135deg, #1A56DB, #2B7FD4)' }}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              {shownAvatar ? <img src={shownAvatar} alt={name} className="w-full h-full object-cover" /> : initials(name)}
-            </button>
-            <span className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-white border border-[#E5E2DD] flex items-center justify-center text-[#1A56DB] shadow-sm pointer-events-none">
-              {uploadingAvatar ? (
-                <svg className="animate-spin" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><circle cx="12" cy="12" r="10" strokeOpacity="0.25" /><path d="M12 2a10 10 0 0 1 10 10" /></svg>
+      {/* Two-column grid on lg+, single column on mobile/tablet */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+
+        {/* ── LEFT COLUMN ── */}
+        <div className="space-y-5">
+
+          {/* Profile card */}
+          <Card title="Profil">
+            <div className="flex items-center gap-4 mb-5">
+              <div className="relative flex-shrink-0">
+                <input ref={avatarRef} type="file" accept="image/*" className="hidden" onChange={(e) => uploadAvatar(e.target.files?.[0])} />
+                <button
+                  onClick={() => avatarRef.current?.click()}
+                  title="Ubah foto profil"
+                  className="w-16 h-16 rounded-2xl overflow-hidden flex items-center justify-center text-white font-display font-bold text-xl shadow-lg hover:opacity-90 transition-opacity"
+                  style={{ background: 'linear-gradient(135deg, #1A56DB, #2B7FD4)' }}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  {shownAvatar ? <img src={shownAvatar} alt={name} className="w-full h-full object-cover" /> : initials(name)}
+                </button>
+                <span className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-white border border-[#E5E2DD] flex items-center justify-center text-[#1A56DB] shadow-sm pointer-events-none">
+                  {uploadingAvatar
+                    ? <svg className="animate-spin" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><circle cx="12" cy="12" r="10" strokeOpacity="0.25" /><path d="M12 2a10 10 0 0 1 10 10" /></svg>
+                    : <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" /><circle cx="12" cy="13" r="3.2" /></svg>}
+                </span>
+              </div>
+              {editing ? (
+                <div className="flex-1 min-w-0">
+                  <label className="text-[#141110] text-xs font-semibold">Nama Lengkap</label>
+                  <input
+                    autoFocus
+                    value={editName}
+                    onChange={(e) => setEditName(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') saveProfile(); if (e.key === 'Escape') setEditing(false) }}
+                    className="w-full mt-1 bg-white border border-[#E5E2DD] rounded-xl px-3.5 py-2.5 text-sm text-[#141110] focus:outline-none focus:border-[#1A56DB]/50 focus:ring-2 focus:ring-[#1A56DB]/10"
+                  />
+                </div>
               ) : (
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" /><circle cx="12" cy="13" r="3.2" /></svg>
+                <div className="min-w-0 flex-1">
+                  <h2 className="font-display font-bold text-[#141110] text-base leading-tight truncate">{name}</h2>
+                  <p className="text-[#A8A29E] text-sm mt-0.5 truncate">{user?.email ?? '—'}</p>
+                  <span className="inline-block mt-1.5 px-2 py-0.5 rounded-full bg-[#EBF0FF] text-[#1A56DB] text-[11px] font-semibold">Paket {planName}</span>
+                </div>
               )}
-            </span>
-          </div>
-          {editing ? (
-            <div className="flex-1 min-w-0">
-              <label className="text-[#141110] text-xs font-semibold">Nama Lengkap</label>
-              <input
-                autoFocus
-                value={editName}
-                onChange={(e) => setEditName(e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Enter') saveProfile(); if (e.key === 'Escape') setEditing(false) }}
-                className="w-full mt-1 bg-white border border-[#E5E2DD] rounded-xl px-3.5 py-2.5 text-sm text-[#141110] focus:outline-none focus:border-[#1A56DB]/50 focus:ring-2 focus:ring-[#1A56DB]/10"
+            </div>
+            {editing ? (
+              <div className="grid grid-cols-2 gap-3">
+                <button onClick={saveProfile} disabled={savingProfile} className="flex items-center justify-center gap-2 text-white font-semibold rounded-xl px-4 py-2.5 text-sm hover:opacity-90 transition-all disabled:opacity-60" style={{ background: 'linear-gradient(135deg, #1A56DB, #2B7FD4)' }}>
+                  {savingProfile ? 'Menyimpan…' : 'Simpan'}
+                </button>
+                <button onClick={() => setEditing(false)} className="flex items-center justify-center bg-white border-2 border-[#E5E2DD] text-[#6B6560] font-semibold rounded-xl px-4 py-2.5 text-sm hover:border-[#C2BDB8] transition-all">Batal</button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-3">
+                <button onClick={() => { setEditName(name); setEditing(true) }} className="flex items-center justify-center gap-2 bg-white border-2 border-[#E5E2DD] text-[#141110] font-semibold rounded-xl px-4 py-2.5 text-sm hover:border-[#1A56DB]/30 transition-all">
+                  <IcoEdit /> Edit Profil
+                </button>
+                <Link href="/#pricing" className="flex items-center justify-center gap-2 text-white font-semibold rounded-xl px-4 py-2.5 text-sm text-center hover:opacity-90 hover:shadow-md hover:shadow-[#1A56DB]/20 transition-all" style={{ background: 'linear-gradient(135deg, #1A56DB, #2B7FD4)' }}>
+                  Upgrade Paket
+                </Link>
+              </div>
+            )}
+          </Card>
+
+          {/* Storage card */}
+          <Card title="Storage">
+            <div className="flex justify-between items-baseline mb-2">
+              <span className="text-[#141110] font-semibold text-lg">{usedGb} <span className="text-sm font-medium text-[#A8A29E]">GB</span></span>
+              <span className="text-[#A8A29E] text-xs">dari {usage.totalGb} GB</span>
+            </div>
+            <div className="h-3 bg-[#F2F0ED] rounded-full overflow-hidden mb-3">
+              <div
+                className="h-full rounded-full transition-all duration-500"
+                style={{ width: `${pct}%`, background: pct > 85 ? 'linear-gradient(90deg, #DC2626, #F87171)' : 'linear-gradient(90deg, #1A56DB, #60A5FA)' }}
               />
             </div>
-          ) : (
-            <div className="min-w-0">
-              <h2 className="font-display font-bold text-[#141110] text-base leading-none truncate">{name}</h2>
-              <p className="text-[#A8A29E] text-sm mt-1 truncate">{user?.email ?? '—'}</p>
-              <span className="inline-block mt-1.5 px-2 py-0.5 rounded-full bg-[#EBF0FF] text-[#1A56DB] text-[11px] font-semibold">Paket {planName}</span>
+            <div className="flex justify-between text-xs text-[#A8A29E]">
+              <span>{remainingGb} GB tersisa</span>
+              <span className={pct > 85 ? 'text-red-500 font-semibold' : ''}>{pct.toFixed(1)}% terpakai</span>
             </div>
+            {pct > 85 && (
+              <Link href="/#pricing" className="mt-4 block text-center text-xs font-semibold text-white py-2.5 rounded-xl hover:opacity-90 transition-all" style={{ background: 'linear-gradient(135deg, #1A56DB, #2B7FD4)' }}>
+                Upgrade untuk lebih banyak storage
+              </Link>
+            )}
+          </Card>
+
+          {/* Referral */}
+          {profile?.referral_code && (
+            <Card title="Kode Referral">
+              <p className="text-[#6B6560] text-xs mb-3">Ajak teman, dapat bonus storage</p>
+              <div className="flex items-center justify-between gap-3 bg-[#FAFAF8] border border-[#F2F0ED] rounded-xl px-4 py-3">
+                <code className="font-display font-bold text-[#1A56DB] text-xl tracking-widest">{profile.referral_code}</code>
+                <button onClick={copyReferral} className="flex items-center gap-2 bg-[#EBF0FF] text-[#1A56DB] font-semibold rounded-xl px-3.5 py-2 text-sm hover:bg-[#dde7fb] transition-all">
+                  <IcoCopy /> {copied ? 'Tersalin!' : 'Salin'}
+                </button>
+              </div>
+            </Card>
           )}
         </div>
-        {editing ? (
-          <div className="grid grid-cols-2 gap-3">
-            <button onClick={saveProfile} disabled={savingProfile} className="flex items-center justify-center gap-2 text-white font-semibold rounded-xl px-4 py-2.5 text-sm hover:opacity-90 transition-all disabled:opacity-60" style={{ background: 'linear-gradient(135deg, #1A56DB, #2B7FD4)' }}>{savingProfile ? 'Menyimpan…' : 'Simpan'}</button>
-            <button onClick={() => setEditing(false)} className="flex items-center justify-center gap-2 bg-white border-2 border-[#E5E2DD] text-[#6B6560] font-semibold rounded-xl px-4 py-2.5 text-sm hover:border-[#C2BDB8] transition-all">Batal</button>
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 gap-3">
-            <button onClick={() => { setEditName(name); setEditing(true) }} className="flex items-center justify-center gap-2 bg-white border-2 border-[#E5E2DD] text-[#141110] font-semibold rounded-xl px-4 py-2.5 text-sm hover:border-[#1A56DB]/30 transition-all"><IcoEdit /> Edit Profil</button>
-            <Link href="/#pricing" className="flex items-center justify-center gap-2 text-white font-semibold rounded-xl px-4 py-2.5 text-sm text-center hover:opacity-90 hover:shadow-md hover:shadow-[#1A56DB]/20 transition-all" style={{ background: 'linear-gradient(135deg, #1A56DB, #2B7FD4)' }}>Upgrade Paket</Link>
-          </div>
-        )}
-      </Section>
 
-      <Section title="Storage">
-        <div className="flex justify-between items-baseline mb-2">
-          <span className="text-[#141110] font-semibold text-sm">{usedGb} GB</span>
-          <span className="text-[#A8A29E] text-xs">dari {usage.totalGb} GB</span>
-        </div>
-        <div className="h-2.5 bg-[#F2F0ED] rounded-full overflow-hidden mb-3">
-          <div className="h-full rounded-full" style={{ width: `${pct}%`, background: 'linear-gradient(90deg, #1A56DB, #60A5FA)' }} />
-        </div>
-        <div className="flex justify-between text-xs text-[#A8A29E]">
-          <span>{remainingGb} GB tersisa</span>
-          <span>{pct.toFixed(0)}% terpakai</span>
-        </div>
-      </Section>
+        {/* ── RIGHT COLUMN ── */}
+        <div className="space-y-5">
 
-      {profile?.referral_code && (
-        <Section title="Kode Referral">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <p className="text-[#6B6560] text-xs mb-1.5">Ajak teman, dapat bonus storage</p>
-              <code className="font-display font-bold text-[#1A56DB] text-lg tracking-wider">{profile.referral_code}</code>
+          {/* Preferences */}
+          <Card title="Preferensi">
+            <div className="space-y-5">
+              {[
+                { label: 'Notifikasi Push', desc: 'Terima notifikasi upload & berbagi', Icon: IcoBell, value: notifications, onChange: setNotifications },
+                { label: 'Backup Otomatis', desc: 'Backup foto dari galeri secara otomatis', Icon: IcoRefresh, value: autoBackup, onChange: setAutoBackup },
+                { label: 'Verifikasi 2 Langkah', desc: 'Tingkatkan keamanan akun kamu', Icon: IcoShield, value: twoFactor, onChange: setTwoFactor },
+              ].map(({ label, desc, Icon: IconCmp, value, onChange }) => (
+                <div key={label} className="flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 bg-[#F2F0ED] text-[#6B6560]"><IconCmp /></div>
+                    <div className="min-w-0">
+                      <p className="font-medium text-[#141110] text-sm leading-none">{label}</p>
+                      <p className="text-[#A8A29E] text-xs mt-1">{desc}</p>
+                    </div>
+                  </div>
+                  <Toggle value={value} onChange={onChange} />
+                </div>
+              ))}
             </div>
-            <button onClick={copyReferral} className="flex items-center gap-2 bg-[#EBF0FF] text-[#1A56DB] font-semibold rounded-xl px-4 py-2.5 text-sm hover:bg-[#dde7fb] transition-all">
-              <IcoCopy /> {copied ? 'Tersalin!' : 'Salin'}
+          </Card>
+
+          {/* Account actions */}
+          <Card title="Akun">
+            <div className="space-y-1">
+              <button onClick={handleResetPassword} className="w-full flex items-center gap-3.5 p-3.5 rounded-xl hover:bg-[#FAFAF8] border border-transparent hover:border-[#E5E2DD] transition-all text-left group">
+                <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 bg-[#EBF0FF] text-[#1A56DB]"><IcoKey /></div>
+                <span className="font-medium text-[#141110] text-sm flex-1">
+                  Ganti Password
+                  {pwMsg && <span className={`text-xs font-normal ml-2 ${pwMsg.includes('Gagal') ? 'text-red-500' : 'text-[#059669]'}`}>{pwMsg}</span>}
+                </span>
+                <span className="text-[#D4CFC9] group-hover:text-[#A8A29E] transition-colors"><IcoChevronR /></span>
+              </button>
+              {[
+                { label: 'Kelola Perangkat', Icon: IcoPhone, accent: '#059669', bg: '#ECFDF5' },
+                { label: 'Referral & Bonus', Icon: IcoGift, accent: '#7C3AED', bg: '#F5F3FF' },
+                { label: 'Pusat Bantuan', Icon: IcoHelp, accent: '#D97706', bg: '#FFF7ED', href: '/help' },
+              ].map(({ label, Icon: IconCmp, accent, bg, href }) => {
+                const inner = (
+                  <>
+                    <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: bg, color: accent }}><IconCmp /></div>
+                    <span className="font-medium text-[#141110] text-sm flex-1">{label}</span>
+                    <span className="text-[#D4CFC9] group-hover:text-[#A8A29E] transition-colors"><IcoChevronR /></span>
+                  </>
+                )
+                const cls = 'w-full flex items-center gap-3.5 p-3.5 rounded-xl hover:bg-[#FAFAF8] border border-transparent hover:border-[#E5E2DD] transition-all text-left group'
+                return href
+                  ? <Link key={label} href={href} className={cls}>{inner}</Link>
+                  : <button key={label} className={cls}>{inner}</button>
+              })}
+              <button onClick={() => signOut()} className="w-full flex items-center gap-3.5 p-3.5 rounded-xl hover:bg-red-50 border border-transparent hover:border-red-100 transition-all text-left group">
+                <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 bg-[#F2F0ED] text-[#6B6560] group-hover:bg-red-100 group-hover:text-red-500 transition-all"><IcoLogout /></div>
+                <span className="font-medium text-[#141110] text-sm flex-1 group-hover:text-red-500 transition-colors">Keluar</span>
+              </button>
+            </div>
+          </Card>
+
+          {/* Danger zone */}
+          <div className="bg-[#FFF1F2] border border-red-100 rounded-2xl p-5">
+            <h3 className="font-display font-semibold text-red-500 text-sm mb-1">Zona Berbahaya</h3>
+            <p className="text-red-400/70 text-xs mb-4">Tindakan ini tidak bisa dibatalkan.</p>
+            <button className="w-full flex items-center justify-center gap-2 text-red-500 font-semibold text-sm py-3 rounded-xl bg-white border border-red-200 hover:bg-red-50 hover:border-red-300 transition-all">
+              <IcoTrash /> Hapus Akun
             </button>
           </div>
-        </Section>
-      )}
-
-      <Section title="Preferensi">
-        <div className="space-y-5">
-          {[
-            { label: 'Notifikasi Push', desc: 'Terima notifikasi upload & berbagi', Icon: IcoBell, value: notifications, onChange: setNotifications },
-            { label: 'Backup Otomatis', desc: 'Backup foto dari galeri secara otomatis', Icon: IcoRefresh, value: autoBackup, onChange: setAutoBackup },
-            { label: 'Verifikasi 2 Langkah', desc: 'Tingkatkan keamanan akun kamu', Icon: IcoShield, value: twoFactor, onChange: setTwoFactor },
-          ].map(({ label, desc, Icon: IconCmp, value, onChange }) => (
-            <div key={label} className="flex items-center justify-between gap-4">
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 bg-[#F2F0ED] text-[#6B6560]"><IconCmp /></div>
-                <div className="min-w-0">
-                  <p className="font-medium text-[#141110] text-sm leading-none">{label}</p>
-                  <p className="text-[#A8A29E] text-xs mt-1">{desc}</p>
-                </div>
-              </div>
-              <Toggle value={value} onChange={onChange} />
-            </div>
-          ))}
         </div>
-      </Section>
-
-      <Section title="Akun">
-        <div className="space-y-1.5">
-          <button onClick={handleResetPassword} className="w-full flex items-center gap-3.5 p-3.5 rounded-xl hover:bg-[#FAFAF8] border border-transparent hover:border-[#E5E2DD] transition-all duration-150 text-left group">
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 bg-[#EBF0FF] text-[#1A56DB]"><IcoKey /></div>
-            <span className="font-medium text-[#141110] text-sm flex-1">Ganti Password {pwMsg && <span className="text-[#059669] text-xs font-normal ml-1">{pwMsg}</span>}</span>
-            <span className="text-[#D4CFC9] group-hover:text-[#A8A29E] transition-colors"><IcoChevronR /></span>
-          </button>
-          {[
-            { label: 'Kelola Perangkat', Icon: IcoPhone, accent: '#059669', bg: '#ECFDF5' },
-            { label: 'Referral & Bonus', Icon: IcoGift, accent: '#7C3AED', bg: '#F5F3FF' },
-            { label: 'Pusat Bantuan', Icon: IcoHelp, accent: '#D97706', bg: '#FFF7ED', href: '/help' },
-          ].map(({ label, Icon: IconCmp, accent, bg, href }) => {
-            const inner = (
-              <>
-                <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: bg, color: accent }}><IconCmp /></div>
-                <span className="font-medium text-[#141110] text-sm flex-1">{label}</span>
-                <span className="text-[#D4CFC9] group-hover:text-[#A8A29E] transition-colors"><IcoChevronR /></span>
-              </>
-            )
-            const cls = 'w-full flex items-center gap-3.5 p-3.5 rounded-xl hover:bg-[#FAFAF8] border border-transparent hover:border-[#E5E2DD] transition-all duration-150 text-left group'
-            return href
-              ? <Link key={label} href={href} className={cls}>{inner}</Link>
-              : <button key={label} className={cls}>{inner}</button>
-          })}
-          <button onClick={() => signOut()} className="w-full flex items-center gap-3.5 p-3.5 rounded-xl hover:bg-[#FAFAF8] border border-transparent hover:border-[#E5E2DD] transition-all duration-150 text-left group">
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 bg-[#F2F0ED] text-[#6B6560]"><IcoLogout /></div>
-            <span className="font-medium text-[#141110] text-sm flex-1">Keluar</span>
-            <span className="text-[#D4CFC9] group-hover:text-[#A8A29E] transition-colors"><IcoChevronR /></span>
-          </button>
-        </div>
-      </Section>
-
-      <div className="bg-[#FFF1F2] border border-red-100 rounded-2xl p-5">
-        <h3 className="font-display font-semibold text-red-500 text-sm mb-1">Zona Berbahaya</h3>
-        <p className="text-red-400/70 text-xs mb-4">Tindakan ini tidak bisa dibatalkan.</p>
-        <button className="w-full flex items-center justify-center gap-2 text-red-500 font-semibold text-sm py-3 rounded-xl bg-white border border-red-200 hover:bg-red-50 hover:border-red-300 transition-all"><IcoTrash /> Hapus Akun</button>
       </div>
     </div>
   )

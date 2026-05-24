@@ -23,7 +23,7 @@ function lastMonths(n: number) {
   const d = new Date()
   for (let i = n - 1; i >= 0; i--) {
     const m = new Date(d.getFullYear(), d.getMonth() - i, 1)
-    out.push({ key: `${m.getFullYear()}-${m.getMonth()}`, label: MONTHS[m.getMonth()] })
+    out.push({ key: `${m.getFullYear()}-${m.getMonth()}`, label: MONTHS[m.getMonth()]! })
   }
   return out
 }
@@ -35,7 +35,7 @@ function bucket(dates: string[], n: number) {
     const d = new Date(iso)
     const key = `${d.getFullYear()}-${d.getMonth()}`
     const idx = months.findIndex((m) => m.key === key)
-    if (idx >= 0) counts[idx]++
+    if (idx >= 0) counts[idx]!++
   })
   return { months, counts }
 }
@@ -104,7 +104,7 @@ export default function AdminDashboard() {
       payData.forEach((p) => {
         const d = new Date(p.created_at)
         const idx = revBucket.findIndex((m) => m.key === `${d.getFullYear()}-${d.getMonth()}`)
-        if (idx >= 0) revCounts[idx] += p.amount_idr ?? 0
+        if (idx >= 0) revCounts[idx]! += p.amount_idr ?? 0
       })
       const revenue30 = payData.filter((p) => p.created_at >= since30).reduce((a, p) => a + (p.amount_idr ?? 0), 0)
       const storage = ((storageRows.data ?? []) as { used_bytes: number }[]).reduce((a, r) => a + (r.used_bytes ?? 0), 0)
