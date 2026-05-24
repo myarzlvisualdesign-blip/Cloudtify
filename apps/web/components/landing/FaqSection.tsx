@@ -2,72 +2,116 @@
 import { useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 
-const FAQS = [
-  { q: 'Apakah Cloudtify benar-benar gratis?', a: 'Ya. Paket Free memberikan 15 GB storage secara gratis selamanya. Tidak perlu kartu kredit untuk mendaftar.' },
-  { q: 'Metode pembayaran apa yang tersedia?', a: 'Kami mendukung GoPay, DANA, OVO, ShopeePay, QRIS, Virtual Account (BCA, Mandiri, BNI, BRI), serta kartu kredit dan debit. Semua diproses aman via Midtrans terdaftar OJK.' },
-  { q: 'Apakah file saya aman?', a: 'Ya. Semua file dienkripsi AES-256 saat disimpan (at-rest) dan TLS saat ditransfer (in-transit). Infrastruktur berjalan di atas Cloudflare R2 dengan standar keamanan enterprise.' },
-  { q: 'Apa yang terjadi jika storage penuh?', a: 'Kamu tidak bisa upload file baru, namun semua file yang sudah ada tetap aman dan bisa diakses. Upgrade paket atau hapus beberapa file untuk dapat mengupload lagi.' },
-  { q: 'Bisakah saya berbagi file tanpa akun penerima?', a: 'Ya. Buat link berbagi yang bisa diakses siapa saja tanpa login. Tambahkan password dan tanggal kadaluarsa untuk keamanan ekstra (tersedia di paket Plus ke atas).' },
-  { q: 'Bagaimana cara membatalkan langganan?', a: 'Batalkan kapan saja dari Pengaturan › Langganan. Akses premium tetap aktif hingga akhir periode yang sudah dibayar, tanpa biaya tambahan.' },
-  { q: 'Apakah ada aplikasi mobile?', a: 'Ya. Cloudtify tersedia di App Store (iOS) dan Google Play (Android). Ringan, responsif, dan mendukung dark mode.' },
-  { q: 'Ada bonus untuk mengajak teman?', a: 'Ada. Setiap teman yang mendaftar lewat referral kamu, kamu dan temanmu masing-masing mendapat bonus storage tambahan. Detail di halaman Referral.' },
+const FAQS: { q: string; a: string }[] = [
+  {
+    q: 'Apakah benar 15 GB gratis selamanya?',
+    a: 'Iya, 100% benar. Tidak ada trial dengan deadline, tidak ada kartu kredit dibutuhkan. Selama akun aktif (login min. 1× per 12 bulan), 15 GB tetap milikmu.',
+  },
+  {
+    q: 'Bagaimana cara bayar pakai GoPay / DANA / QRIS?',
+    a: 'Di halaman upgrade, pilih paket lalu metode pembayaran. Kami pakai integrasi langsung ke Midtrans, jadi proses bayar selesai dalam <60 detik. Saldo storage langsung naik begitu pembayaran berhasil.',
+  },
+  {
+    q: 'Server-nya di mana? Aman tidak?',
+    a: 'Primary di Jakarta (Cloudflare R2 region SEA) + replica di Singapura untuk redundansi. Semua file dienkripsi at-rest pakai AES-256-GCM dan in-transit pakai TLS 1.3. Patuh UU PDP & GDPR.',
+  },
+  {
+    q: 'Bisa upload file besar (>1 GB)?',
+    a: 'Paket Pro & Business pakai multipart upload, jadi bisa sampai 50 GB / file (Pro) atau unlimited (Business). Upload otomatis di-pause kalau koneksi drop, lalu resume setelah online.',
+  },
+  {
+    q: 'Apakah file saya akan dihapus kalau saya tidak login lama?',
+    a: 'Free: tidak dihapus selama login min. 1× per 12 bulan. Pro & Business: tidak ada batasan inaktivitas. Kalau akun mau dihentikan, kami selalu kasih notifikasi via email 60 hari sebelumnya.',
+  },
+  {
+    q: 'Bisa cancel kapan saja?',
+    a: 'Bisa. Tidak ada commitment, tidak ada early-termination fee. Cancel, dan akun otomatis turun ke Free pada akhir billing period. File tetap aman, hanya quota mengecil.',
+  },
+  {
+    q: 'Bagaimana dengan tim besar atau enterprise?',
+    a: 'Untuk team >10 user atau kebutuhan custom (SSO, dedicated infra, kontrak tahunan, custom SLA), email enterprise@cloudtify.com — biasanya kami balas dalam 1 hari kerja.',
+  },
+  {
+    q: 'Apa bedanya Cloudtify dengan Google Drive / Dropbox?',
+    a: 'Tiga hal: (1) Harga jauh lebih murah — Pro Cloudtify Rp15.000/bln, Google One setara Rp45.000/bln. (2) Server di Asia Tenggara, latensi <50ms vs Google ~120ms. (3) Bayar pakai e-wallet — tidak perlu kartu kredit internasional.',
+  },
 ]
 
+function ChevronIcon({ open }: { open: boolean }) {
+  return (
+    <svg
+      width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"
+      className={`transition-transform duration-300 ${open ? 'rotate-180' : ''}`}
+    >
+      <polyline points="6 9 12 15 18 9" />
+    </svg>
+  )
+}
+
 export function FaqSection() {
-  const [open, setOpen] = useState<number | null>(null)
+  const [open, setOpen] = useState<number | null>(0)
 
   return (
-    <section id="faq" className="bg-[#FAFAF8] px-6 py-24">
-      <div className="mx-auto max-w-2xl">
-        <div className="mb-12">
-          <p className="text-[#1A56DB] text-xs font-semibold tracking-widest uppercase mb-3">FAQ</p>
-          <h2 className="font-display font-extrabold text-[#141110] text-3xl md:text-4xl leading-tight tracking-tight mb-4">
-            Pertanyaan yang sering ditanyakan
+    <section id="faq" className="bg-[#FAFAF8] py-24 sm:py-32 px-5">
+      <div className="section-inner max-w-3xl">
+        <div className="text-center mb-14">
+          <span className="inline-flex items-center gap-2 text-xs font-mono uppercase tracking-[0.18em] text-[#1A56DB]">
+            <span className="w-6 h-px bg-[#1A56DB]" /> FAQ
+          </span>
+          <h2 className="font-display font-extrabold text-[#141110] tracking-super-tight mt-4 text-4xl sm:text-5xl lg:text-6xl leading-[1.04]">
+            Pertanyaan yang <span className="gradient-text">sering ditanya.</span>
           </h2>
-          <p className="text-[#A8A29E] text-sm">
-            Tidak menemukan jawaban?{' '}
-            <a href="mailto:support@cloudtify.com" className="text-[#1A56DB] hover:underline font-medium">
-              Email kami
+          <p className="mt-5 text-[#494440] text-lg">
+            Tidak nemu jawabannya?{' '}
+            <a href="mailto:halo@cloudtify.com" className="text-[#1A56DB] font-semibold hover:underline">
+              Email kami →
             </a>
           </p>
         </div>
 
-        <div className="space-y-2">
-          {FAQS.map((faq, i) => (
-            <motion.div
-              key={i}
-              initial={false}
-              className="bg-white rounded-2xl border border-[#E5E2DD] overflow-hidden transition-colors"
-              style={{ borderColor: open === i ? '#C2D0F8' : undefined }}>
-              <button
-                onClick={() => setOpen(open === i ? null : i)}
-                className="w-full flex items-center justify-between px-6 py-5 text-left gap-4 hover:bg-[#FAFAF8] transition-colors">
-                <span className="font-display font-semibold text-[#141110] text-sm leading-snug">{faq.q}</span>
-                <motion.span
-                  animate={{ rotate: open === i ? 45 : 0 }}
-                  transition={{ duration: 0.22, ease: 'easeOut' }}
-                  className="flex-shrink-0 w-6 h-6 rounded-full border border-[#E5E2DD] flex items-center justify-center text-[#A8A29E]">
-                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-                    <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-                  </svg>
-                </motion.span>
-              </button>
-              <AnimatePresence initial={false}>
-                {open === i && (
-                  <motion.div
-                    key="body"
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: 'auto', opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: 0.26, ease: "easeOut" }}>
-                    <div className="px-6 pb-5">
-                      <p className="text-[#6B6560] text-sm leading-relaxed">{faq.a}</p>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </motion.div>
-          ))}
+        <div className="space-y-3">
+          {FAQS.map((f, i) => {
+            const isOpen = open === i
+            return (
+              <div
+                key={i}
+                className={`bg-white rounded-2xl border transition-all ${
+                  isOpen ? 'border-[#1A56DB]/30 shadow-elev-2' : 'border-[#E5E2DD] hover:border-[#CCC8C1]'
+                }`}
+              >
+                <button
+                  type="button"
+                  onClick={() => setOpen(isOpen ? null : i)}
+                  className="w-full text-left px-6 py-5 flex items-center justify-between gap-4"
+                  aria-expanded={isOpen}
+                >
+                  <span className="font-display font-bold text-[#141110] text-base sm:text-lg leading-tight">
+                    {f.q}
+                  </span>
+                  <span className={`flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center ${isOpen ? 'bg-[#EBF0FF] text-[#1A56DB]' : 'bg-[#F2F0ED] text-[#6B6560]'}`}>
+                    <ChevronIcon open={isOpen} />
+                  </span>
+                </button>
+                <AnimatePresence initial={false}>
+                  {isOpen && (
+                    <motion.div
+                      key="content"
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.32, ease: [0.16, 1, 0.3, 1] }}
+                      className="overflow-hidden"
+                    >
+                      <p className="px-6 pb-5 text-[#494440] text-[15px] leading-relaxed">
+                        {f.a}
+                      </p>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            )
+          })}
         </div>
       </div>
     </section>
