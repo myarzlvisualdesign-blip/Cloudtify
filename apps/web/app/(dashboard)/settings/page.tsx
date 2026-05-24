@@ -58,18 +58,40 @@ export default function SettingsPage() {
   const [overrideName, setOverrideName] = useState<string | null>(null)
   const [avatarOverride, setAvatarOverride] = useState<string | null>(null)
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
+  const [avatarMsg, setAvatarMsg] = useState('')
   const avatarRef = useRef<HTMLInputElement>(null)
 
   async function uploadAvatar(file?: File | null) {
     if (!file || !user) return
+    if (file.size > 5 * 1024 * 1024) {
+      setAvatarMsg('Foto maks 5 MB.')
+      return
+    }
+    if (!file.type.startsWith('image/')) {
+      setAvatarMsg('File harus berupa gambar.')
+      return
+    }
     setUploadingAvatar(true)
-    const ext = (file.name.split('.').pop() || 'jpg').toLowerCase()
-    const path = `${user.id}/avatar-${Date.now()}.${ext}`
-    const { error } = await supabase.storage.from('avatars').upload(path, file, { upsert: true, contentType: file.type || 'image/jpeg' })
-    if (!error) {
-      const { data } = supabase.storage.from('avatars').getPublicUrl(path)
-      await supabase.from('profiles').update({ avatar_url: data.publicUrl }).eq('id', user.id)
-      setAvatarOverride(data.publicUrl)
+    setAvatarMsg('')
+    const ext = (file.name.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '')
+    const path = `${user.id}/avatar-${Date.now()}.${ext || 'jpg'}`
+    const { error: upErr } = await supabase.storage
+      .from('avatars')
+      .upload(path, file, { upsert: true, contentType: file.type || 'image/jpeg', cacheControl: '3600' })
+    if (upErr) {
+      setAvatarMsg(`Gagal upload: ${upErr.message}`)
+      setUploadingAvatar(false)
+      return
+    }
+    const { data: pub } = supabase.storage.from('avatars').getPublicUrl(path)
+    const cacheBustedUrl = `${pub.publicUrl}?v=${Date.now()}`
+    const { error: dbErr } = await supabase.from('profiles').update({ avatar_url: pub.publicUrl }).eq('id', user.id)
+    if (dbErr) {
+      setAvatarMsg(`Gagal simpan ke profil: ${dbErr.message}`)
+    } else {
+      setAvatarOverride(cacheBustedUrl)
+      setAvatarMsg('Foto profil diperbarui ✓')
+      setTimeout(() => setAvatarMsg(''), 2500)
     }
     setUploadingAvatar(false)
   }
@@ -169,6 +191,9 @@ export default function SettingsPage() {
                 </div>
               )}
             </div>
+            {avatarMsg && (
+              <p className={`text-xs mb-3 ${avatarMsg.startsWith('Gagal') ? 'text-[#DC2626]' : 'text-[#059669]'}`}>{avatarMsg}</p>
+            )}
             {editing ? (
               <div className="grid grid-cols-2 gap-3">
                 <button onClick={saveProfile} disabled={savingProfile} className="flex items-center justify-center gap-2 text-white font-semibold rounded-xl px-4 py-2.5 text-sm hover:opacity-90 transition-all disabled:opacity-60" style={{ background: 'linear-gradient(135deg, #1A56DB, #2B7FD4)' }}>

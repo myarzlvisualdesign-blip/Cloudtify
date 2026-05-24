@@ -56,6 +56,40 @@ function isHeic(f: { mime_type: string; name: string }): boolean {
   return /heic|heif/.test(f.mime_type || '') || /\.heic$|\.heif$/i.test(f.name)
 }
 
+/** Extract first decent frame (≈0.4s) from a video URL → small JPEG data URL. */
+function captureVideoFrame(url: string): Promise<string | null> {
+  return new Promise((resolve) => {
+    const v = document.createElement('video')
+    v.crossOrigin = 'anonymous'
+    v.preload = 'metadata'
+    v.muted = true
+    v.playsInline = true
+    let settled = false
+    const cleanup = () => { try { v.src = '' } catch {} }
+    const done = (out: string | null) => { if (!settled) { settled = true; cleanup(); resolve(out) } }
+    v.onloadeddata = () => { try { v.currentTime = Math.min(0.4, (v.duration || 1) * 0.1) } catch { done(null) } }
+    v.onseeked = () => {
+      try {
+        const w = v.videoWidth || 320
+        const h = v.videoHeight || 180
+        const scale = Math.min(360 / Math.max(w, h), 1)
+        const cw = Math.round(w * scale)
+        const ch = Math.round(h * scale)
+        const canvas = document.createElement('canvas')
+        canvas.width = cw
+        canvas.height = ch
+        const ctx = canvas.getContext('2d')
+        if (!ctx) return done(null)
+        ctx.drawImage(v, 0, 0, cw, ch)
+        done(canvas.toDataURL('image/jpeg', 0.7))
+      } catch { done(null) }
+    }
+    v.onerror = () => done(null)
+    setTimeout(() => done(null), 8000)
+    v.src = url
+  })
+}
+
 const FILTERS: [string, string][] = [
   ['all', 'Semua'], ['image', 'Foto'], ['video', 'Video'], ['document', 'Dokumen'], ['archive', 'Arsip'],
 ]
@@ -88,31 +122,45 @@ export default function FilesPage() {
   const [size, setSize] = useState<'sm' | 'md' | 'lg'>('md')
   const [folderCovers, setFolderCovers] = useState<Map<string, string>>(new Map())
   const [imageThumbs, setImageThumbs] = useState<Map<string, string>>(new Map())
+  const [videoThumbs, setVideoThumbs] = useState<Map<string, string>>(new Map())
   const [shareTarget, setShareTarget] = useState<ShareTarget | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const folderInputRef = useRef<HTMLInputElement>(null)
 
-  // Folder covers — first renderable image in each folder
+  // Folder covers — first renderable image (or video frame) in each folder
   useEffect(() => {
     if (!folders.length || !files.length) return
-    const firstImage = new Map<string, FileRow>()
+    const firstCover = new Map<string, FileRow>()
+    // Pass 1: prefer images
     for (const f of files) {
-      if (f.folder_id && catOf(f.mime_type) === 'image' && !isHeic(f) && !firstImage.has(f.folder_id))
-        firstImage.set(f.folder_id, f)
+      if (f.folder_id && catOf(f.mime_type) === 'image' && !isHeic(f) && !firstCover.has(f.folder_id))
+        firstCover.set(f.folder_id, f)
     }
-    if (!firstImage.size) return
+    // Pass 2: fall back to videos for folders that still have no cover
+    for (const f of files) {
+      if (f.folder_id && catOf(f.mime_type) === 'video' && !firstCover.has(f.folder_id))
+        firstCover.set(f.folder_id, f)
+    }
+    if (!firstCover.size) return
     let cancelled = false
-    Promise.all(
-      Array.from(firstImage.entries()).slice(0, 12).map(async ([folderId, f]) => {
-        const url = await getStoredFileUrl(f, 3600).catch(() => '')
-        return [folderId, url] as const
-      }),
-    ).then((pairs) => {
-      if (cancelled) return
-      const next = new Map<string, string>()
-      for (const [k, v] of pairs) if (v) next.set(k, v)
-      setFolderCovers(next)
-    })
+    ;(async () => {
+      const entries = Array.from(firstCover.entries()).slice(0, 12)
+      const out = new Map<string, string>()
+      for (const [folderId, f] of entries) {
+        if (cancelled) return
+        try {
+          const url = await getStoredFileUrl(f, 3600)
+          if (!url) continue
+          if (catOf(f.mime_type) === 'video') {
+            const frame = await captureVideoFrame(url)
+            if (frame) out.set(folderId, frame)
+          } else {
+            out.set(folderId, url)
+          }
+        } catch { /* skip */ }
+      }
+      if (!cancelled) setFolderCovers(out)
+    })()
     return () => { cancelled = true }
   }, [files, folders])
 
@@ -136,6 +184,32 @@ export default function FilesPage() {
         return next
       })
     })
+    return () => { cancelled = true }
+  }, [files]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Video thumbnails — extract first frame to canvas JPEG so cards show cover
+  useEffect(() => {
+    if (!files.length) return
+    const videos = files.filter((f) => catOf(f.mime_type) === 'video').slice(0, 30)
+    const need = videos.filter((f) => !videoThumbs.has(f.id))
+    if (!need.length) return
+    let cancelled = false
+    ;(async () => {
+      for (const f of need) {
+        if (cancelled) return
+        try {
+          const url = await getStoredFileUrl(f, 3600)
+          if (!url) continue
+          const dataUrl = await captureVideoFrame(url)
+          if (!dataUrl || cancelled) continue
+          setVideoThumbs((prev) => {
+            const next = new Map(prev)
+            next.set(f.id, dataUrl)
+            return next
+          })
+        } catch { /* skip on error */ }
+      }
+    })()
     return () => { cancelled = true }
   }, [files]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -504,7 +578,10 @@ export default function FilesPage() {
         <div className="bg-white border border-[#E5E2DD] rounded-2xl">
           {filtered.map((file, i) => {
             const { Icon: IconCmp, accent, bg } = FILE_TYPE_MAP[catOf(file.mime_type)]
-            const thumb = catOf(file.mime_type) === 'image' && !isHeic(file) ? imageThumbs.get(file.id) : null
+            const cat = catOf(file.mime_type)
+            const thumb = cat === 'image' && !isHeic(file)
+              ? imageThumbs.get(file.id)
+              : cat === 'video' ? videoThumbs.get(file.id) : null
             return (
               <div
                 key={file.id}
@@ -512,11 +589,16 @@ export default function FilesPage() {
                 className={`flex items-center gap-3 sm:gap-3.5 px-3.5 sm:px-5 py-3 sm:py-3.5 ${trash ? '' : 'cursor-pointer'} hover:bg-[#FAFAF8] transition-colors ${i < filtered.length - 1 ? 'border-b border-[#F2F0ED]' : ''} ${busyId === file.id ? 'opacity-50' : ''}`}
               >
                 {/* Thumbnail or type icon */}
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 overflow-hidden" style={{ background: bg, color: accent }}>
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 overflow-hidden relative" style={{ background: bg, color: accent }}>
                   {thumb
                     // eslint-disable-next-line @next/next/no-img-element
                     ? <img src={thumb} alt="" className="w-full h-full object-cover" />
                     : <IconCmp />}
+                  {cat === 'video' && thumb && (
+                    <span className="absolute inset-0 flex items-center justify-center bg-black/30 text-white">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
+                    </span>
+                  )}
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-[#141110] text-sm truncate">{file.name}</p>
@@ -561,8 +643,10 @@ export default function FilesPage() {
           {filtered.map((file) => {
             const cat = catOf(file.mime_type)
             const { Icon: IconCmp, accent, bg } = FILE_TYPE_MAP[cat]
-            const canThumb = cat === 'image' && !isHeic(file)
-            const thumb = canThumb ? imageThumbs.get(file.id) : null
+            const canImg = cat === 'image' && !isHeic(file)
+            const thumb = canImg
+              ? imageThumbs.get(file.id)
+              : cat === 'video' ? videoThumbs.get(file.id) : null
             const thumbH = size === 'lg' ? 'h-36' : 'h-24'
             return (
               <div
@@ -573,8 +657,17 @@ export default function FilesPage() {
                 {size !== 'sm' ? (
                   <button onClick={() => (trash ? restoreFile(file) : openFile(file))} className="block w-full">
                     {thumb ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={thumb} alt={file.name} className={`w-full ${thumbH} object-cover`} />
+                      <div className={`relative w-full ${thumbH}`}>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={thumb} alt={file.name} className={`w-full ${thumbH} object-cover`} />
+                        {cat === 'video' && (
+                          <span className="absolute inset-0 flex items-center justify-center bg-black/25">
+                            <span className="w-11 h-11 rounded-full bg-white/90 backdrop-blur flex items-center justify-center text-[#141110]">
+                              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
+                            </span>
+                          </span>
+                        )}
+                      </div>
                     ) : (
                       <div className={`w-full ${thumbH} flex items-center justify-center`} style={{ background: bg }}>
                         <div style={{ color: accent, transform: size === 'lg' ? 'scale(2)' : 'scale(1.5)' }}><IconCmp /></div>
