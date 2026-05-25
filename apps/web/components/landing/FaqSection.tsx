@@ -5,35 +5,35 @@ import { AnimatePresence, motion } from 'framer-motion'
 const FAQS: { q: string; a: string }[] = [
   {
     q: 'Apakah benar 15 GB gratis selamanya?',
-    a: 'Iya, 100% benar. Tidak ada trial dengan deadline, tidak ada kartu kredit dibutuhkan. Selama akun aktif (login min. 1× per 12 bulan), 15 GB tetap milikmu.',
+    a: 'Benar. Tidak ada masa uji coba berbatas waktu dan kami tidak meminta kartu kredit saat Anda mendaftar. Selama akun masih aktif (minimal sekali masuk dalam 12 bulan), kuota 15 GB tetap menjadi milik Anda.',
   },
   {
-    q: 'Bagaimana cara bayar pakai GoPay / DANA / QRIS?',
-    a: 'Di halaman upgrade, pilih paket lalu metode pembayaran. Kami pakai integrasi langsung ke Midtrans, jadi proses bayar selesai dalam <60 detik. Saldo storage langsung naik begitu pembayaran berhasil.',
+    q: 'Bagaimana proses pembayaran menggunakan e-wallet dan QRIS?',
+    a: 'Pada halaman langganan, pilih paket dan metode pembayaran yang Anda inginkan. Transaksi diproses melalui mitra pembayaran resmi kami dan biasanya selesai dalam waktu kurang dari 60 detik. Kuota Anda diperbarui otomatis setelah pembayaran terkonfirmasi.',
   },
   {
-    q: 'Server-nya di mana? Aman tidak?',
-    a: 'Primary di Jakarta (Cloudflare R2 region SEA) + replica di Singapura untuk redundansi. Semua file dienkripsi at-rest pakai AES-256-GCM dan in-transit pakai TLS 1.3. Patuh UU PDP & GDPR.',
+    q: 'Di mana data saya disimpan dan bagaimana keamanannya?',
+    a: 'Penyimpanan utama berada di Jakarta dengan replika di Singapura untuk redundansi. Setiap berkas dienkripsi menggunakan AES-256-GCM saat disimpan dan TLS 1.3 saat ditransfer. Operasi kami patuh pada Undang-Undang Pelindungan Data Pribadi Indonesia.',
   },
   {
-    q: 'Bisa upload file besar (>1 GB)?',
-    a: 'Paket Pro & Business pakai multipart upload, jadi bisa sampai 50 GB / file (Pro) atau unlimited (Business). Upload otomatis di-pause kalau koneksi drop, lalu resume setelah online.',
+    q: 'Berapa ukuran berkas maksimum yang dapat diunggah?',
+    a: 'Paket Pro mendukung berkas hingga 50 GB per unggahan, sementara paket Business tidak memiliki batasan ukuran. Sistem unggah kami otomatis menjeda saat koneksi terputus dan melanjutkan dari titik terakhir setelah jaringan tersedia kembali.',
   },
   {
-    q: 'Apakah file saya akan dihapus kalau saya tidak login lama?',
-    a: 'Free: tidak dihapus selama login min. 1× per 12 bulan. Pro & Business: tidak ada batasan inaktivitas. Kalau akun mau dihentikan, kami selalu kasih notifikasi via email 60 hari sebelumnya.',
+    q: 'Apakah berkas saya bisa terhapus karena akun tidak aktif?',
+    a: 'Pada paket gratis, akun perlu masuk minimal sekali dalam 12 bulan. Paket Pro dan Business tidak memiliki batasan keaktifan. Sebelum tindakan apa pun, kami akan mengirimkan pemberitahuan melalui surel 60 hari sebelumnya.',
   },
   {
-    q: 'Bisa cancel kapan saja?',
-    a: 'Bisa. Tidak ada commitment, tidak ada early-termination fee. Cancel, dan akun otomatis turun ke Free pada akhir billing period. File tetap aman, hanya quota mengecil.',
+    q: 'Apakah saya dapat membatalkan langganan kapan saja?',
+    a: 'Tentu. Tidak ada kontrak jangka panjang dan tidak ada biaya pemutusan dini. Setelah pembatalan, akun Anda akan kembali ke paket gratis pada akhir siklus penagihan, dan seluruh berkas tetap utuh.',
   },
   {
-    q: 'Bagaimana dengan tim besar atau enterprise?',
-    a: 'Untuk team >10 user atau kebutuhan custom (SSO, dedicated infra, kontrak tahunan, custom SLA), email enterprise@cloudtify.com — biasanya kami balas dalam 1 hari kerja.',
+    q: 'Bagaimana untuk kebutuhan tim atau perusahaan?',
+    a: 'Untuk tim dengan lebih dari 10 pengguna atau kebutuhan khusus seperti SSO, infrastruktur khusus, kontrak tahunan, dan SLA kustom, silakan hubungi enterprise@cloudtify.com. Tim kami biasanya merespons dalam satu hari kerja.',
   },
   {
-    q: 'Apa bedanya Cloudtify dengan Google Drive / Dropbox?',
-    a: 'Tiga hal: (1) Harga jauh lebih murah — Pro Cloudtify Rp15.000/bln, Google One setara Rp45.000/bln. (2) Server di Asia Tenggara, latensi <50ms vs Google ~120ms. (3) Bayar pakai e-wallet — tidak perlu kartu kredit internasional.',
+    q: 'Apa yang membedakan Cloudtify?',
+    a: 'Tiga hal yang konsisten kami prioritaskan: (1) Harga dalam mata uang Rupiah dengan struktur transparan yang sesuai kantong pengguna Indonesia. (2) Infrastruktur lokal di Asia Tenggara untuk latensi rendah dan kepatuhan pada UU PDP. (3) Pembayaran melalui e-wallet, transfer bank, dan QRIS — tanpa membutuhkan kartu kredit internasional.',
   },
 ]
 
@@ -60,12 +60,12 @@ export function FaqSection() {
             <span className="w-6 h-px bg-[#1A56DB]" /> FAQ
           </span>
           <h2 className="font-display font-extrabold text-[#141110] tracking-super-tight mt-4 text-4xl sm:text-5xl lg:text-6xl leading-[1.04]">
-            Pertanyaan yang <span className="gradient-text">sering ditanya.</span>
+            Pertanyaan yang <span className="gradient-text">sering kami terima.</span>
           </h2>
           <p className="mt-5 text-[#494440] text-lg">
-            Tidak nemu jawabannya?{' '}
+            Belum menemukan jawabannya?{' '}
             <a href="mailto:halo@cloudtify.com" className="text-[#1A56DB] font-semibold hover:underline">
-              Email kami →
+              Kirim surel kepada kami →
             </a>
           </p>
         </div>

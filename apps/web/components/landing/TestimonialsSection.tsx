@@ -13,57 +13,57 @@ interface Testimonial {
 const TESTIMONIALS: Testimonial[] = [
   {
     quote:
-      'Akhirnya cloud storage yang bisa bayar pakai GoPay. Antarmukanya bersih, upload cepat. Workflow editing video saya jadi lebih lancar.',
+      'Akhirnya saya menemukan penyimpanan cloud yang menerima e-wallet lokal. Antarmukanya rapi, unggahan stabil bahkan untuk klip 4K, dan alur kerja pasca-produksi saya menjadi jauh lebih ringkas.',
     name: 'Budi Santoso',
-    role: 'Video editor freelance',
+    role: 'Editor video lepas',
     initial: 'B',
     bg: 'linear-gradient(135deg,#1A56DB,#3D6FE8)',
     city: 'Jakarta',
   },
   {
     quote:
-      'Saya sebelumnya pakai Google Drive untuk arsip foto pernikahan. Migrasi ke Cloudtify hemat 60% biaya bulanan. Servernya benar-benar di Asia, latensi rendah banget.',
+      'Sebelumnya saya mengandalkan layanan global untuk arsip foto pernikahan. Setelah pindah ke Cloudtify, biaya bulanan turun signifikan dan responsivitasnya terasa jauh lebih cepat karena server berada di kawasan ini.',
     name: 'Rizka Pratiwi',
-    role: 'Wedding photographer',
+    role: 'Fotografer pernikahan',
     initial: 'R',
     bg: 'linear-gradient(135deg,#F472B6,#EC4899)',
     city: 'Bandung',
   },
   {
     quote:
-      'Sebagai admin di studio animasi 12 orang, fitur team workspace + audit log Cloudtify sangat membantu. Kompetitor minta kontrak tahunan — di sini bayar bulanan.',
+      'Sebagai pengelola studio animasi dengan 12 anggota tim, ruang kerja tim dan catatan audit Cloudtify benar-benar membantu. Kami juga menghargai fleksibilitas penagihan bulanan tanpa kontrak tahunan.',
     name: 'Andi Wijaya',
-    role: 'Studio manager',
+    role: 'Manajer studio',
     initial: 'A',
     bg: 'linear-gradient(135deg,#10B981,#34D399)',
     city: 'Yogyakarta',
   },
   {
     quote:
-      'Suka banget fitur share link bisa diset expiry. Klien saya tidak punya akses selamanya, hanya selama project berjalan. Lebih profesional.',
+      'Fitur pengaturan masa berlaku tautan adalah penyelamat saya. Klien hanya memiliki akses selama proyek berlangsung, sesuatu yang membuat penyerahan berkas terasa jauh lebih profesional.',
     name: 'Sari Lestari',
-    role: 'UI designer freelance',
+    role: 'UI designer lepas',
     initial: 'S',
     bg: 'linear-gradient(135deg,#F59E0B,#FBBF24)',
     city: 'Surabaya',
   },
   {
     quote:
-      'Tim saya share file via WhatsApp dulu, sekarang via Cloudtify link. Lebih cepat, tidak ada compresi, dan ada audit jejak siapa saja yang akses.',
+      'Tim kami sekarang berbagi berkas melalui tautan Cloudtify, bukan lampiran obrolan. Tidak ada kompresi, tidak ada batasan ukuran, dan kami punya jejak audit yang jelas tentang siapa membuka apa.',
     name: 'Hendra Kurniawan',
-    role: 'Marketing manager',
+    role: 'Manajer pemasaran',
     initial: 'H',
     bg: 'linear-gradient(135deg,#8B5CF6,#A78BFA)',
     city: 'Medan',
   },
   {
     quote:
-      'Storage 500 GB Rp15.000/bulan beneran masuk akal buat content creator. Saya nggak perlu mikirin penuh-penuh.',
+      'Kapasitas 500 GB dengan harga Rp15.000 per bulan adalah penawaran yang sangat masuk akal untuk pembuat konten seperti saya. Saya tidak perlu khawatir kehabisan ruang di tengah jadwal padat.',
     name: 'Dewi Anggraini',
-    role: 'TikToker · 280K followers',
+    role: 'Pembuat konten digital',
     initial: 'D',
     bg: 'linear-gradient(135deg,#EF4444,#F87171)',
-    city: 'Bali',
+    city: 'Denpasar',
   },
 ]
 
@@ -91,13 +91,13 @@ export function TestimonialsSection() {
             <span className="w-6 h-px bg-[#1A56DB]" /> Testimoni
           </span>
           <h2 className="font-display font-extrabold text-[#141110] tracking-super-tight mt-4 text-4xl sm:text-5xl lg:text-6xl leading-[1.04]">
-            Dipakai 52.000+ <span className="gradient-text">profesional Indonesia.</span>
+            Dipercaya oleh 52.000+ <span className="gradient-text">profesional di Indonesia.</span>
           </h2>
           <div className="mt-6 flex items-center justify-center gap-2 text-[#494440] text-sm">
             <Stars />
-            <span className="font-semibold">4,8/5</span>
+            <span className="font-semibold">4,8 dari 5,0</span>
             <span className="text-[#A8A29E]">·</span>
-            <span className="text-[#A8A29E]">1.847 review verified</span>
+            <span className="text-[#A8A29E]">1.847 ulasan terverifikasi</span>
           </div>
         </div>
 

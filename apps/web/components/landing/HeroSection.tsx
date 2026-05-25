@@ -2,6 +2,7 @@
 import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { useEffect, useRef, useState } from 'react'
+import { PAYMENT_LOGOS, INFRA_LOGOS } from './BrandLogos'
 
 /* ── Reusable: animated badge with pulse ─────────────────────────── */
 function HeroBadge() {
@@ -16,7 +17,7 @@ function HeroBadge() {
         <span className="absolute inset-0 rounded-full bg-[#1A56DB] animate-ping opacity-60" />
         <span className="relative inline-block w-2 h-2 rounded-full bg-[#1A56DB]" />
       </span>
-      Cloud storage Indonesia · 15 GB gratis selamanya
+      Penyimpanan cloud Indonesia — 15 GB gratis selamanya
     </motion.div>
   )
 }
@@ -227,7 +228,7 @@ function ProductShowcase() {
             <span key={c} className="w-6 h-6 rounded-full border-2 border-white" style={{ background: c }} />
           ))}
         </div>
-        <span className="text-[11px] text-[#494440] font-medium">3 orang melihat</span>
+        <span className="text-[11px] text-[#494440] font-medium">3 kolaborator aktif</span>
       </motion.div>
 
       {/* Floating speed badge — bottom left */}
@@ -241,7 +242,7 @@ function ProductShowcase() {
           <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" /></svg>
         </span>
         <div className="leading-tight">
-          <div className="text-[11px] text-[#A8A29E]">Upload speed</div>
+          <div className="text-[11px] text-[#A8A29E]">Kecepatan upload</div>
           <div className="text-[13px] font-display font-bold text-[#141110]">120 MB/s</div>
         </div>
       </motion.div>
@@ -249,24 +250,34 @@ function ProductShowcase() {
   )
 }
 
-/* ── Logo cloud (auto-marquee) ────────────────────────────────────── */
-function LogoCloud() {
-  const logos = [
-    'Tokopedia', 'Bukalapak', 'Traveloka', 'Gojek', 'Bibit',
-    'Ruangguru', 'Halodoc', 'Mekari', 'Tiket.com', 'Pinhome',
-  ]
-  const doubled = [...logos, ...logos]
+/* ── Partner & infra logo strip ───────────────────────────────────── */
+function PartnerStrip() {
   return (
-    <div className="mt-20 lg:mt-24">
-      <p className="text-center text-[#A8A29E] text-xs uppercase tracking-[0.18em] font-medium mb-6">
-        Dipakai 52.000+ profesional & UMKM di Indonesia
-      </p>
-      <div className="relative mask-fade-x">
-        <div className="flex gap-12 animate-marquee" style={{ width: 'max-content' }}>
-          {doubled.map((name, i) => (
-            <div key={`${name}-${i}`} className="text-[#A8A29E] font-display font-bold text-xl tracking-tight whitespace-nowrap opacity-60 hover:opacity-100 transition-opacity">
-              {name}
-            </div>
+    <div className="mt-20 lg:mt-24 space-y-10">
+      {/* Payment partners */}
+      <div>
+        <p className="text-center text-[#A8A29E] text-[11px] uppercase tracking-[0.22em] font-semibold mb-7">
+          Metode pembayaran yang didukung
+        </p>
+        <div className="flex flex-wrap items-center justify-center gap-x-10 gap-y-6 sm:gap-x-12">
+          {PAYMENT_LOGOS.map(({ Component, name }) => (
+            <span key={name} className="opacity-70 hover:opacity-100 transition-opacity">
+              <Component className="h-6 sm:h-7" tone="dark" />
+            </span>
+          ))}
+        </div>
+      </div>
+
+      {/* Infra stack */}
+      <div className="pt-10 border-t border-[#E5E2DD]">
+        <p className="text-center text-[#A8A29E] text-[11px] uppercase tracking-[0.22em] font-semibold mb-7">
+          Dibangun di atas infrastruktur kelas enterprise
+        </p>
+        <div className="flex flex-wrap items-center justify-center gap-x-12 sm:gap-x-16 gap-y-5">
+          {INFRA_LOGOS.map(({ Component, name }) => (
+            <span key={name} className="opacity-70 hover:opacity-100 transition-opacity">
+              <Component className="h-6 sm:h-7" tone="dark" />
+            </span>
           ))}
         </div>
       </div>
@@ -291,7 +302,7 @@ export function HeroSection() {
           className="font-display font-extrabold text-[#141110] mt-6 mx-auto max-w-4xl"
           style={{ fontSize: 'clamp(2.25rem, 5.6vw, 4.25rem)', lineHeight: 1.06, letterSpacing: '-0.035em' }}
         >
-          Cloud storage <span className="gradient-text">Indonesia yang sesungguhnya.</span>
+          Penyimpanan cloud yang <span className="gradient-text">dirancang untuk Indonesia.</span>
         </motion.h1>
 
         <motion.p
@@ -300,8 +311,8 @@ export function HeroSection() {
           transition={{ duration: 0.7, delay: 0.2 }}
           className="mx-auto mt-7 max-w-2xl text-[#494440] text-lg sm:text-xl leading-relaxed"
         >
-          15 GB gratis selamanya. Enkripsi penuh. Server Asia Tenggara — latensi rendah.
-          Bayar pakai <strong className="text-[#141110]">GoPay</strong>, <strong className="text-[#141110]">DANA</strong>, atau <strong className="text-[#141110]">QRIS</strong>.
+          15 GB gratis selamanya, enkripsi end-to-end, dan data center di Jakarta serta Singapura.
+          Pembayaran via <strong className="text-[#141110]">GoPay</strong>, <strong className="text-[#141110]">DANA</strong>, <strong className="text-[#141110]">QRIS</strong>, dan transfer bank — tanpa kartu kredit.
         </motion.p>
 
         <motion.div
@@ -311,14 +322,14 @@ export function HeroSection() {
           className="mt-9 flex flex-col sm:flex-row gap-3 justify-center items-center"
         >
           <Link href="/auth/register/" className="btn-primary text-base">
-            Mulai Gratis — 15 GB
+            Buat akun gratis
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round">
               <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
             </svg>
           </Link>
           <Link href="/#features" className="btn-secondary text-base">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="6 4 20 12 6 20" /></svg>
-            Lihat demo (60 detik)
+            Lihat cara kerja
           </Link>
         </motion.div>
 
@@ -329,7 +340,7 @@ export function HeroSection() {
           transition={{ duration: 0.6, delay: 0.5 }}
           className="mt-6 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-[13px] text-[#A8A29E]"
         >
-          {['Tanpa kartu kredit', 'Batal kapan saja', 'AES-256 end-to-end', 'Server Jakarta + Singapura'].map((item) => (
+          {['Tanpa kartu kredit', 'Berhenti berlangganan kapan saja', 'Enkripsi AES-256', 'Data center Jakarta & Singapura'].map((item) => (
             <span key={item} className="flex items-center gap-1.5">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#22C55E" strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
               {item}
@@ -338,7 +349,7 @@ export function HeroSection() {
         </motion.div>
 
         <ProductShowcase />
-        <LogoCloud />
+        <PartnerStrip />
 
         {/* Stats bar — animated counters */}
         <motion.div
@@ -350,9 +361,9 @@ export function HeroSection() {
         >
           {[
             { v: 52000, suffix: '+', l: 'Pengguna aktif' },
-            { v: 99,    suffix: ',9% uptime', l: '99,9% SLA terjamin' },
-            { v: 120,   suffix: ' MB/s', l: 'Rata-rata upload' },
-            { v: 15,    suffix: ' GB', l: 'Gratis selamanya' },
+            { v: 99,    suffix: ',9%',     l: 'Uptime SLA' },
+            { v: 120,   suffix: ' MB/s',   l: 'Rata-rata kecepatan upload' },
+            { v: 15,    suffix: ' GB',     l: 'Penyimpanan gratis selamanya' },
           ].map((s, i) => (
             <div key={i} className="py-6 px-4 sm:px-6 text-center">
               <div className="font-display font-extrabold text-[#141110] text-2xl sm:text-3xl tracking-tight">

@@ -77,10 +77,10 @@ export function Footer() {
           <div>
             <Logo size={36} wordmark="light" />
             <h3 className="mt-6 font-display font-extrabold text-3xl sm:text-4xl tracking-super-tight leading-[1.1]">
-              Update bulanan, tanpa spam.
+              Pembaruan bulanan tanpa spam.
             </h3>
             <p className="mt-3 text-white/60 max-w-md">
-              Tips storage, fitur baru, dan promo eksklusif. Unsubscribe kapan saja dengan 1 klik.
+              Wawasan produktivitas, peluncuran fitur, dan penawaran eksklusif untuk pelanggan kami. Berhenti berlangganan kapan saja dalam satu klik.
             </p>
           </div>
           <form
@@ -92,14 +92,14 @@ export function Footer() {
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="emailmu@contoh.com"
+              placeholder="nama@perusahaan.com"
               className="flex-1 px-5 py-3.5 rounded-xl bg-white/[0.05] border border-white/10 text-white placeholder:text-white/30 text-sm focus:outline-none focus:border-[#60A5FA]/50 focus:bg-white/[0.08]"
             />
             <button
               type="submit"
               className="bg-white text-[#0B0F1E] font-semibold px-6 py-3.5 rounded-xl text-sm hover:opacity-90 transition-all"
             >
-              {submitted ? '✓ Terima kasih!' : 'Subscribe'}
+              {submitted ? '✓ Berhasil terdaftar' : 'Berlangganan'}
             </button>
           </form>
         </div>
@@ -108,7 +108,7 @@ export function Footer() {
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-8 lg:gap-12 mb-14">
           <div className="col-span-2 md:col-span-2 lg:col-span-1">
             <p className="text-white/55 text-sm leading-relaxed max-w-xs">
-              Cloud storage premium untuk Indonesia. Server lokal, harga e-wallet, fitur seimbang dengan global.
+              Penyimpanan cloud kelas premium yang dirancang untuk Indonesia — infrastruktur lokal, pembayaran dalam Rupiah, dan kemampuan setara solusi global.
             </p>
             <div className="mt-5 flex flex-wrap gap-2">
               {BADGES.map((b) => (
@@ -138,9 +138,9 @@ export function Footer() {
         {/* Bottom row */}
         <div className="flex flex-col-reverse md:flex-row items-start md:items-center justify-between gap-6 pt-8 border-t border-white/10">
           <div className="text-white/45 text-xs">
-            © {new Date().getFullYear()} Cloudtify. Made in Indonesia 🇮🇩 with ❤️.
+            © {new Date().getFullYear()} PT Cloudtify Indonesia. Dirancang dan dirakit di Indonesia.
             <br className="md:hidden" />
-            <span className="ml-0 md:ml-3">All rights reserved.</span>
+            <span className="ml-0 md:ml-3">Hak cipta dilindungi undang-undang.</span>
           </div>
           <div className="flex items-center gap-2">
             {SOCIALS.map((s) => (

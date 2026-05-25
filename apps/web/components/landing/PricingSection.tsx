@@ -18,57 +18,57 @@ interface Plan {
 
 const PLANS: Plan[] = [
   {
-    name: 'Free',
-    blurb: 'Untuk personal & coba-coba.',
+    name: 'Gratis',
+    blurb: 'Untuk penggunaan pribadi.',
     priceMonthly: 0,
     priceYearly: 0,
     storage: '15 GB',
     features: [
-      '15 GB storage',
-      'Upload sampai 1 GB / file',
-      'Sinkron 2 perangkat',
-      'Share link expiry 7 hari',
-      'Support komunitas',
+      '15 GB penyimpanan',
+      'Maksimum 1 GB per berkas',
+      'Sinkronisasi pada dua perangkat',
+      'Tautan berbagi berlaku hingga 7 hari',
+      'Dukungan komunitas',
     ],
     ctaLabel: 'Mulai gratis',
     ctaHref: '/auth/register/',
   },
   {
     name: 'Pro',
-    blurb: 'Buat creator, freelancer & UMKM.',
+    blurb: 'Untuk kreator, pekerja lepas, dan UMKM.',
     priceMonthly: 15000,
     priceYearly: 150000,
     storage: '500 GB',
     highlight: true,
-    badge: 'Paling populer',
+    badge: 'Pilihan terpopuler',
     features: [
-      '500 GB storage',
-      'Upload sampai 50 GB / file',
-      'Sinkron unlimited devices',
-      'Share link expiry custom + password',
-      'Version history 30 hari',
-      'Priority chat support 24/7',
-      'AI search & auto-tag',
+      '500 GB penyimpanan',
+      'Maksimum 50 GB per berkas',
+      'Sinkronisasi tanpa batas perangkat',
+      'Tautan berbagi dengan kata sandi & masa berlaku kustom',
+      'Riwayat versi hingga 30 hari',
+      'Dukungan prioritas 24/7',
+      'Pencarian cerdas dan penandaan otomatis',
     ],
-    ctaLabel: 'Coba Pro 7 hari gratis',
+    ctaLabel: 'Coba Pro gratis 7 hari',
     ctaHref: '/auth/register/',
   },
   {
     name: 'Business',
-    blurb: 'Tim & perusahaan kecil.',
+    blurb: 'Untuk tim dan perusahaan.',
     priceMonthly: 49000,
     priceYearly: 490000,
-    storage: '2 TB / user',
+    storage: '2 TB per pengguna',
     features: [
-      '2 TB per user',
-      'Unlimited file size',
-      'Team workspace + role',
-      'Audit log + SSO',
-      'Version history 90 hari',
-      'Dedicated success manager',
-      'SLA 99,99% uptime',
+      '2 TB per pengguna',
+      'Tanpa batas ukuran berkas',
+      'Ruang kerja tim dengan peran terstruktur',
+      'Catatan audit dan SSO',
+      'Riwayat versi hingga 90 hari',
+      'Manajer keberhasilan pelanggan',
+      'SLA dengan jaminan uptime 99,99%',
     ],
-    ctaLabel: 'Hubungi sales',
+    ctaLabel: 'Hubungi tim penjualan',
     ctaHref: 'mailto:sales@cloudtify.com',
   },
 ]
@@ -88,7 +88,7 @@ export function PricingSection() {
             Sederhana. <span className="gradient-text">Transparan.</span>
           </h2>
           <p className="mt-5 text-[#494440] text-lg leading-relaxed">
-            Tidak ada biaya tersembunyi. Tidak ada commitment. Bayar pakai e-wallet langsung dari aplikasi.
+            Tanpa biaya tersembunyi, tanpa kontrak yang mengikat. Pembayaran langsung dari aplikasi menggunakan metode favorit Anda.
           </p>
 
           <div className="mt-8 inline-flex items-center gap-2 p-1.5 rounded-full bg-white border border-[#E5E2DD] shadow-elev-1">
@@ -153,7 +153,7 @@ export function PricingSection() {
                     </div>
                   )}
                   <div className={`mt-1.5 text-xs ${plan.highlight ? 'text-white/55' : 'text-[#A8A29E]'}`}>
-                    {plan.storage} · pembayaran via GoPay / DANA / QRIS
+                    {plan.storage} · pembayaran via e-wallet, QRIS, atau transfer bank
                   </div>
                 </div>
 
@@ -186,9 +186,9 @@ export function PricingSection() {
         </div>
 
         <div className="mt-12 text-center text-[#A8A29E] text-sm">
-          Butuh storage lebih besar atau custom contract?{' '}
+          Membutuhkan kapasitas lebih besar atau perjanjian khusus?{' '}
           <a href="mailto:enterprise@cloudtify.com" className="text-[#1A56DB] font-semibold hover:underline">
-            Hubungi enterprise sales →
+            Hubungi tim enterprise →
           </a>
         </div>
       </div>

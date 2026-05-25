@@ -11,27 +11,27 @@ import { motion, AnimatePresence, useScroll, useSpring, useMotionValueEvent } fr
 const STEPS = [
   {
     key: 'upload',
-    title: 'Upload tanpa drama',
-    blurb: 'Drag & drop file apa pun — foto, video 4K, dokumen. Chunked upload otomatis pakai ulang koneksi yang sedang aktif.',
-    pill: '01 · Upload',
+    title: 'Unggah dengan andal',
+    blurb: 'Tarik berkas apa pun — foto, video 4K, atau dokumen besar. Cloudtify memecah berkas menjadi potongan kecil dan mengirim paralel ke data center terdekat.',
+    pill: '01 · Unggah',
   },
   {
     key: 'encrypt',
-    title: 'Dienkripsi di sisi server',
-    blurb: 'AES-256 end-to-end + TLS in-transit. Provider penyimpanan pun tidak bisa baca isi file kamu.',
+    title: 'Dienkripsi sejak menyentuh server',
+    blurb: 'Setiap berkas dienkripsi dengan AES-256-GCM saat tersimpan dan TLS 1.3 saat dipindahkan. Kunci dikelola terpisah dari penyimpanan.',
     pill: '02 · Enkripsi',
   },
   {
     key: 'sync',
-    title: 'Sinkron di semua perangkat',
-    blurb: 'iOS, Android, web — file kamu muncul instan di mana pun. Versi history 30 hari untuk Pro.',
-    pill: '03 · Sinkron',
+    title: 'Tersinkronisasi di semua perangkat',
+    blurb: 'Perubahan tampil seketika di aplikasi iOS, Android, dan web. Riwayat versi tersimpan hingga 30 hari pada paket Pro.',
+    pill: '03 · Sinkronisasi',
   },
   {
     key: 'share',
-    title: 'Bagikan dalam 1 klik',
-    blurb: 'Link short branded, expiry custom, viewer/editor permission. Atau langsung ke WhatsApp.',
-    pill: '04 · Bagikan',
+    title: 'Berbagi dengan kontrol penuh',
+    blurb: 'Buat tautan singkat berbranding, atur izin pelihat atau editor, kata sandi, dan masa berlaku — semua dalam satu panel.',
+    pill: '04 · Berbagi',
   },
 ] as const
 
@@ -54,8 +54,8 @@ function UploadPanel() {
             <polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/>
           </svg>
         </div>
-        <div className="text-white text-sm font-display font-bold mb-1">Drop file di sini</div>
-        <div className="text-white/60 text-xs">atau klik untuk pilih · maks 5 GB per file</div>
+        <div className="text-white text-sm font-display font-bold mb-1">Lepaskan berkas di sini</div>
+        <div className="text-white/60 text-xs">atau pilih dari perangkat · maksimum 50 GB per berkas</div>
       </div>
       <div className="mt-5 space-y-2">
         {[
@@ -138,12 +138,12 @@ function SharePanel() {
   return (
     <div className="w-[88%] max-w-md rounded-2xl bg-white p-5 shadow-2xl shadow-black/50">
       <div className="flex items-center justify-between mb-4">
-        <div className="text-[#141110] font-display font-bold text-sm">Bagikan file</div>
+        <div className="text-[#141110] font-display font-bold text-sm">Bagikan berkas</div>
         <span className="text-[#A8A29E] text-xs">presentation.pptx</span>
       </div>
       <div className="grid grid-cols-2 gap-2 mb-3">
-        <div className="rounded-lg border border-[#E5E2DD] bg-[#FAFAF8] px-3 py-2 text-center text-[11px] text-[#494440]">Hanya saya</div>
-        <div className="rounded-lg border-2 border-[#1A56DB] bg-[#EBF0FF] px-3 py-2 text-center text-[11px] text-[#1A56DB] font-semibold">Siapa pun dgn link</div>
+        <div className="rounded-lg border border-[#E5E2DD] bg-[#FAFAF8] px-3 py-2 text-center text-[11px] text-[#494440]">Pribadi</div>
+        <div className="rounded-lg border-2 border-[#1A56DB] bg-[#EBF0FF] px-3 py-2 text-center text-[11px] text-[#1A56DB] font-semibold">Siapa pun dengan tautan</div>
       </div>
       <div className="flex items-center gap-2 rounded-lg bg-[#0B0F1E] px-3 py-2.5 mb-3">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#60A5FA" strokeWidth="2.2">
@@ -159,7 +159,7 @@ function SharePanel() {
             <span key={c} className="w-6 h-6 rounded-full border-2 border-white" style={{ background: c }} />
           ))}
         </div>
-        <span className="text-[#6B6560] text-xs">4 orang melihat dalam 5 menit terakhir</span>
+        <span className="text-[#6B6560] text-xs">4 kolaborator aktif dalam 5 menit terakhir</span>
       </div>
     </div>
   )
@@ -229,7 +229,7 @@ export function ScrollStory() {
           <motion.div className="order-2 lg:order-1">
             <span className="inline-flex items-center gap-2 text-xs font-mono text-[#60A5FA] uppercase tracking-[0.18em] mb-5">
               <span className="w-6 h-px bg-[#60A5FA]" />
-              How it works
+              Cara kerja
             </span>
             <div className="space-y-1 mb-8">
               {STEPS.map((s, i) => (

@@ -1,5 +1,6 @@
 'use client'
 import { motion } from 'framer-motion'
+import { GoPayLogo, DanaLogo, OvoLogo, QrisLogo, BcaLogo } from './BrandLogos'
 
 /* ── Icons ────────────────────────────────────────────────────────── */
 const icon = (path: JSX.Element) => (
@@ -78,18 +79,12 @@ function StorageViz() {
 }
 
 function PaymentLogos() {
-  const logos = [
-    { l: 'GoPay', c: '#00AED6' },
-    { l: 'DANA',  c: '#118EEA' },
-    { l: 'OVO',   c: '#4C2A86' },
-    { l: 'QRIS',  c: '#E11D48' },
-    { l: 'BCA',   c: '#0064C2' },
-  ]
+  const logos = [GoPayLogo, DanaLogo, OvoLogo, QrisLogo, BcaLogo]
   return (
     <div className="mt-6 grid grid-cols-5 gap-2">
-      {logos.map((p) => (
-        <div key={p.l} className="aspect-[2/1] rounded-lg border border-[#E5E2DD] bg-white flex items-center justify-center text-[10px] font-display font-bold tracking-tight" style={{ color: p.c }}>
-          {p.l}
+      {logos.map((Logo, i) => (
+        <div key={i} className="aspect-[2/1] rounded-lg border border-[#E5E2DD] bg-white flex items-center justify-center px-2">
+          <Logo tone="dark" className="h-4" />
         </div>
       ))}
     </div>
@@ -131,62 +126,62 @@ const CELLS: Cell[] = [
   {
     span: 'lg:col-span-2 lg:row-span-2',
     icon: 'bolt',
-    title: 'Upload secepat kilat.',
-    desc: 'Chunked multipart via Cloudflare R2. Pause & resume otomatis kalau koneksi drop. Rata-rata 120 MB/s pada 4G.',
+    title: 'Unggahan multipart yang stabil',
+    desc: 'Setiap file dipecah menjadi chunk dan dialirkan langsung ke Cloudflare R2. Jika koneksi terputus, transfer akan melanjutkan dari potongan terakhir — tanpa mengulang dari nol.',
     accent: '#1A56DB',
     children: <SpeedViz />,
   },
   {
     span: 'lg:col-span-2',
     icon: 'shield',
-    title: 'Enkripsi end-to-end',
-    desc: 'AES-256-GCM at-rest. TLS 1.3 in-transit. Link share bisa pakai password + expiry.',
+    title: 'Keamanan tingkat enterprise',
+    desc: 'AES-256-GCM untuk data tersimpan, TLS 1.3 untuk data dalam transit, dan tautan berbagi yang dapat diberi kata sandi serta masa berlaku.',
     accent: '#1A56DB',
   },
   {
     span: 'lg:col-span-2',
     icon: 'globe',
-    title: 'Server di Asia Tenggara',
-    desc: 'Jakarta & Singapura — latensi <50ms untuk pengguna Indonesia. Patuh UU PDP.',
+    title: 'Infrastruktur di Asia Tenggara',
+    desc: 'Data center utama di Jakarta dengan replika di Singapura. Latensi rata-rata di bawah 50ms untuk pelanggan di Indonesia, mematuhi UU PDP.',
     accent: '#059669',
   },
   {
     span: 'lg:col-span-2',
     icon: 'gift',
-    title: 'Bayar pakai e-wallet',
-    desc: 'Tanpa kartu kredit. Top-up GoPay, DANA, OVO, atau scan QRIS dari rekening apapun.',
+    title: 'Pembayaran lokal yang familier',
+    desc: 'Berlangganan menggunakan e-wallet, transfer bank, atau QRIS langsung dari aplikasi — tanpa kartu kredit internasional.',
     accent: '#1A56DB',
     children: <PaymentLogos />,
   },
   {
     span: 'lg:col-span-2',
     icon: 'device',
-    title: 'Multi-perangkat',
-    desc: 'Aplikasi native iOS & Android + web. Sinkron real-time tanpa "loading dulu".',
+    title: 'Sinkronisasi lintas perangkat',
+    desc: 'Aplikasi native untuk iOS dan Android serta antarmuka web yang konsisten. Perubahan tampil seketika di semua perangkat.',
     accent: '#0EA5E9',
     children: <DeviceViz />,
   },
   {
     span: 'lg:col-span-2',
     icon: 'bar',
-    title: 'Storage analytics',
-    desc: 'Lihat berapa GB dipakai per tipe file, file mana terbesar, kapan terakhir diakses.',
+    title: 'Analitik penyimpanan',
+    desc: 'Pantau distribusi kapasitas berdasarkan tipe berkas, file terbesar yang menghabiskan ruang, hingga aktivitas akses terakhir.',
     accent: '#1A56DB',
     children: <StorageViz />,
   },
   {
     span: 'lg:col-span-4',
     icon: 'share',
-    title: 'Share Google Drive-style — tapi lebih cepat',
-    desc: 'Link short branded. Pilih akses viewer / editor. Allow-download toggle. Expiry custom (24 jam, 7 hari, 30 hari, atau permanen).',
+    title: 'Kontrol berbagi yang menyeluruh.',
+    desc: 'Tautan singkat berbranding, pilihan izin pelihat atau editor, opsi unduhan, dan masa berlaku yang dapat dikustomisasi — 24 jam, 7 hari, 30 hari, atau tanpa batas.',
     accent: '#1A56DB',
     dark: true,
   },
   {
     span: 'lg:col-span-2',
     icon: 'refresh',
-    title: 'Version history',
-    desc: 'Rollback ke versi sebelumnya — 30 hari untuk Pro, 90 hari untuk Business.',
+    title: 'Riwayat versi',
+    desc: 'Pulihkan versi sebelumnya kapan saja — 30 hari pada paket Pro dan 90 hari pada paket Business.',
     accent: '#1A56DB',
   },
 ]
@@ -199,14 +194,14 @@ export function FeaturesSection() {
         {/* Heading */}
         <div className="text-center max-w-3xl mx-auto mb-16">
           <span className="inline-flex items-center gap-2 text-xs font-mono uppercase tracking-[0.18em] text-[#1A56DB]">
-            <span className="w-6 h-px bg-[#1A56DB]" /> Fitur lengkap
+            <span className="w-6 h-px bg-[#1A56DB]" /> Kemampuan platform
           </span>
           <h2 className="font-display font-extrabold text-[#141110] tracking-super-tight mt-4 text-4xl sm:text-5xl lg:text-6xl leading-[1.04]">
-            Semua yang kamu butuh,<br/>
-            <span className="gradient-text">tanpa harus install ekstensi.</span>
+            Setiap detail yang Anda butuhkan,
+            <span className="gradient-text"> dipikirkan dari awal.</span>
           </h2>
           <p className="mt-5 text-[#494440] text-lg max-w-xl mx-auto">
-            Dibangun ulang dari nol untuk Indonesia — pakai best practice tools yang biasanya cuma ada di produk global.
+            Performa, keamanan, dan kemudahan pembayaran berstandar internasional — dengan pengalaman yang dirancang khusus untuk pasar Indonesia.
           </p>
         </div>
 
