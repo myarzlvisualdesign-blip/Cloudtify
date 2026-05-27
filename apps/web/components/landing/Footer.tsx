@@ -56,9 +56,12 @@ const SOCIALS = [
 
 const BADGES = ['ISO 27001', 'UU PDP Indonesia', 'GDPR Ready', 'SOC 2 Type II*']
 
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
 export function Footer() {
   const [email, setEmail] = useState('')
   const [submitted, setSubmitted] = useState(false)
+  const [emailErr, setEmailErr] = useState('')
 
   return (
     <footer className="relative bg-[#0A0907] text-white pt-20 pb-10 px-5 overflow-hidden">
@@ -84,23 +87,34 @@ export function Footer() {
             </p>
           </div>
           <form
-            onSubmit={(e) => { e.preventDefault(); setSubmitted(true); setEmail('') }}
-            className="flex flex-col sm:flex-row gap-3 w-full max-w-md justify-self-end"
+            noValidate
+            onSubmit={(e) => {
+              e.preventDefault()
+              if (!email.trim()) return setEmailErr('Mohon isi alamat email Anda.')
+              if (!EMAIL_RE.test(email.trim())) return setEmailErr('Format email belum sesuai.')
+              setEmailErr('')
+              setSubmitted(true)
+              setEmail('')
+            }}
+            className="w-full max-w-md justify-self-end"
           >
-            <input
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="nama@perusahaan.com"
-              className="flex-1 px-5 py-3.5 rounded-xl bg-white/[0.05] border border-white/10 text-white placeholder:text-white/30 text-sm focus:outline-none focus:border-[#60A5FA]/50 focus:bg-white/[0.08]"
-            />
-            <button
-              type="submit"
-              className="bg-white text-[#0B0F1E] font-semibold px-6 py-3.5 rounded-xl text-sm hover:opacity-90 transition-all"
-            >
-              {submitted ? '✓ Berhasil terdaftar' : 'Berlangganan'}
-            </button>
+            <div className="flex flex-col sm:flex-row gap-3">
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => { setEmail(e.target.value); if (emailErr) setEmailErr('') }}
+                placeholder="nama@perusahaan.com"
+                aria-label="Alamat email"
+                className={`flex-1 px-5 py-3.5 rounded-xl bg-white/[0.05] text-white placeholder:text-white/30 text-sm focus:outline-none focus:bg-white/[0.08] border ${emailErr ? 'border-red-400/60 focus:border-red-400' : 'border-white/10 focus:border-[#60A5FA]/50'}`}
+              />
+              <button
+                type="submit"
+                className="bg-white text-[#0B0F1E] font-semibold px-6 py-3.5 rounded-xl text-sm hover:opacity-90 transition-all"
+              >
+                {submitted ? '✓ Berhasil terdaftar' : 'Berlangganan'}
+              </button>
+            </div>
+            {emailErr && <p className="mt-2 text-red-300 text-xs">{emailErr}</p>}
           </form>
         </div>
 
