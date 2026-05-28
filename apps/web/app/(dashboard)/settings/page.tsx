@@ -143,7 +143,7 @@ export default function SettingsPage() {
       {/* Page title */}
       <div className="pt-2">
         <h1 className="font-display font-bold text-[#141110] text-xl tracking-tight">Pengaturan</h1>
-        <p className="text-[#A8A29E] text-sm mt-0.5">Kelola akun dan preferensi kamu</p>
+        <p className="text-[#A8A29E] text-sm mt-0.5">Kelola akun dan preferensi Anda</p>
       </div>
 
       {/* Two-column grid on lg+, single column on mobile/tablet */}
@@ -259,7 +259,7 @@ export default function SettingsPage() {
               {[
                 { label: 'Notifikasi Push', desc: 'Terima notifikasi upload & berbagi', Icon: IcoBell, value: notifications, onChange: setNotifications },
                 { label: 'Backup Otomatis', desc: 'Backup foto dari galeri secara otomatis', Icon: IcoRefresh, value: autoBackup, onChange: setAutoBackup },
-                { label: 'Verifikasi 2 Langkah', desc: 'Tingkatkan keamanan akun kamu', Icon: IcoShield, value: twoFactor, onChange: setTwoFactor },
+                { label: 'Verifikasi dua langkah', desc: 'Tingkatkan keamanan akun Anda', Icon: IcoShield, value: twoFactor, onChange: setTwoFactor },
               ].map(({ label, desc, Icon: IconCmp, value, onChange }) => (
                 <div key={label} className="flex items-center justify-between gap-4">
                   <div className="flex items-center gap-3 min-w-0">

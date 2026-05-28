@@ -225,7 +225,7 @@ export function ShareModal({
               <div className="flex-1 min-w-0">
                 <p className="font-display font-semibold text-[#141110] text-sm">Akses umum</p>
                 <p className="text-[#A8A29E] text-xs">
-                  {scope === 'link' ? 'Siapa pun yang punya link bisa membuka' : 'Hanya kamu yang bisa mengakses'}
+                  {scope === 'link' ? 'Siapa pun dengan tautan dapat membuka' : 'Hanya Anda yang dapat mengakses'}
                 </p>
               </div>
             </div>

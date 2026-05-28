@@ -101,13 +101,13 @@ export default function HistoryPage() {
   return (
     <div className="space-y-6">
       <div className="pt-2">
-        <h1 className="font-display font-bold text-[#141110] text-xl tracking-tight">Riwayat Penggunaan</h1>
-        <p className="text-[#A8A29E] text-sm mt-0.5">Pantau aktivitas storage kamu</p>
+        <h1 className="font-display font-bold text-[#141110] text-xl tracking-tight">Riwayat penggunaan</h1>
+        <p className="text-[#A8A29E] text-sm mt-0.5">Pantau aktivitas penyimpanan dan tren penggunaan Anda</p>
       </div>
 
       <div className="bg-white border border-[#E5E2DD] rounded-2xl p-6">
-        <h3 className="font-display font-semibold text-[#141110] text-sm mb-1">Penggunaan Storage</h3>
-        <p className="text-[#A8A29E] text-xs mb-4">6 bulan terakhir (kumulatif)</p>
+        <h3 className="font-display font-semibold text-[#141110] text-sm mb-1">Konsumsi penyimpanan</h3>
+        <p className="text-[#A8A29E] text-xs mb-4">Akumulasi enam bulan terakhir</p>
         {loading ? <div className="py-10 text-center text-[#A8A29E] text-sm">Memuat…</div> : <AreaChart data={chart.data} labels={chart.labels} maxGb={chart.maxGb} />}
         {!loading && empty && <p className="text-center text-[#A8A29E] text-xs mt-2">Belum ada data penggunaan.</p>}
       </div>
@@ -123,10 +123,10 @@ export default function HistoryPage() {
       </div>
 
       <div>
-        <h2 className="font-display font-semibold text-[#141110] text-sm mb-3">Aktivitas Terbaru</h2>
+        <h2 className="font-display font-semibold text-[#141110] text-sm mb-3">Aktivitas terbaru</h2>
         <div className="bg-white border border-[#E5E2DD] rounded-2xl overflow-hidden">
           {loading ? (
-            <div className="py-12 text-center text-[#A8A29E] text-sm">Memuat…</div>
+            <div className="py-12 text-center text-[#A8A29E] text-sm">Memuat aktivitas…</div>
           ) : activity.length === 0 ? (
             <div className="py-12 text-center text-[#A8A29E] text-sm">Belum ada aktivitas tercatat.</div>
           ) : activity.map((item, i) => {

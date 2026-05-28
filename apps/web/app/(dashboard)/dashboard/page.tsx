@@ -51,9 +51,9 @@ function StorageRing({ usedGb, totalGb }: { usedGb: number; totalGb: number }) {
 interface FileRow { id: string; name: string; size_bytes: number; mime_type: string }
 
 const QUICK = [
-  { Icon: Icon.upload, label: 'Upload', href: '/files' },
-  { Icon: Icon.share, label: 'Bagikan', href: '/files' },
-  { Icon: Icon.download, label: 'Unduh', href: '/files' },
+  { Icon: Icon.upload, label: 'Unggah berkas', href: '/files' },
+  { Icon: Icon.share, label: 'Bagikan tautan', href: '/files' },
+  { Icon: Icon.download, label: 'Unduh berkas', href: '/files' },
 ]
 
 export default function UserDashboard() {
@@ -157,10 +157,10 @@ export default function UserDashboard() {
         {files.length === 0 ? (
           <div className="py-12 text-center">
             <div className="w-14 h-14 rounded-2xl bg-[#EBF0FF] flex items-center justify-center mx-auto mb-4 text-[#1A56DB]"><Icon.upload size={24} /></div>
-            <p className="text-[#141110] text-sm font-semibold mb-1">Belum ada file</p>
-            <p className="text-[#A8A29E] text-xs mb-5">Mulai upload file pertama kamu ke Cloudtify.</p>
+            <p className="text-[#141110] text-sm font-semibold mb-1">Belum ada berkas</p>
+            <p className="text-[#A8A29E] text-xs mb-5">Mulai unggah berkas pertama Anda untuk mengaktifkan ruang penyimpanan.</p>
             <Link href="/files" className="inline-flex items-center gap-2 text-white text-sm font-semibold px-5 py-2.5 rounded-xl" style={{ background: 'linear-gradient(135deg, #1A56DB, #2B7FD4)' }}>
-              <Icon.upload size={16} /> Upload File
+              <Icon.upload size={16} /> Unggah berkas
             </Link>
           </div>
         ) : (
