@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react'
 import { View, Text, TouchableOpacity, FlatList, RefreshControl, ActivityIndicator } from 'react-native'
+import Svg, { Path } from 'react-native-svg'
 import { router, useLocalSearchParams } from 'expo-router'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useAuthStore } from '../../state/auth.store'
@@ -23,6 +24,15 @@ export default function FilesScreen() {
   const isSelecting = selectedIds.size > 0
 
   const { pickDocuments, pickImages } = useUpload(folder_id ?? null)
+
+  function IcoFolderPlus() {
+    return (
+      <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" strokeLinecap="round" strokeLinejoin="round">
+        <Path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" stroke="#94A3B8" strokeWidth={2} />
+        <Path d="M12 11v6M9 14h6" stroke="#94A3B8" strokeWidth={2} />
+      </Svg>
+    )
+}
 
   // Folders in current directory
   const { data: folders = [] } = useQuery({
@@ -77,7 +87,7 @@ export default function FilesScreen() {
               onPress={handleCreateFolder}
               className="w-9 h-9 bg-dark-800 rounded-xl items-center justify-center"
             >
-              <Text className="text-white text-lg">📁</Text>
+              <IcoFolderPlus />
             </TouchableOpacity>
           </View>
         </View>

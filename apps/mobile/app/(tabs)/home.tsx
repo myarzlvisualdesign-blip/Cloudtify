@@ -2,6 +2,7 @@ import { ScrollView, View, Text, TouchableOpacity, RefreshControl } from 'react-
 import { router } from 'expo-router'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useQuery } from '@tanstack/react-query'
+import Svg, { Path } from 'react-native-svg'
 import { useAuthStore } from '../../state/auth.store'
 import { supabase } from '../../services/supabase/client'
 import { StorageBar } from '../../components/storage/StorageBar'
@@ -10,6 +11,15 @@ import { QuickActions } from '../../components/ui/QuickActions'
 import { PremiumBanner } from '../../components/subscription/PremiumBanner'
 import { formatBytes } from '@cloudtify/utils'
 import type { StorageUsage } from '@cloudtify/types'
+
+function IcoBell() {
+  return (
+    <Svg width={20} height={20} viewBox="0 0 24 24" fill="none" strokeLinecap="round" strokeLinejoin="round">
+      <Path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" stroke="#94A3B8" strokeWidth={2} />
+      <Path d="M13.73 21a2 2 0 0 1-3.46 0" stroke="#94A3B8" strokeWidth={2} />
+    </Svg>
+  )
+}
 
 export default function HomeScreen() {
   const user = useAuthStore((s) => s.user)
@@ -61,7 +71,7 @@ export default function HomeScreen() {
             onPress={() => router.push('/profile/notifications')}
             className="w-10 h-10 bg-dark-800 rounded-full items-center justify-center"
           >
-            <Text className="text-lg">🔔</Text>
+            <IcoBell />
           </TouchableOpacity>
         </View>
 
