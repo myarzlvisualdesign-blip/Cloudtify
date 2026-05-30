@@ -101,6 +101,9 @@ export default function RootLayout() {
             <Stack.Screen name="preview/[id]" options={{ presentation: 'fullScreenModal' }} />
             <Stack.Screen name="share/[slug]" />
             <Stack.Screen name="subscription/upgrade" options={{ presentation: 'modal' }} />
+            <Stack.Screen name="folders/create" options={{ presentation: 'modal' }} />
+            <Stack.Screen name="profile/notifications" />
+            <Stack.Screen name="profile/storage" />
           </Stack>
         </QueryClientProvider>
       </SafeAreaProvider>

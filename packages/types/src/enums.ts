@@ -36,6 +36,6 @@ export type AuditAction =
   | 'admin_action'
 
 export type FileCategory = 'image' | 'video' | 'audio' | 'document' | 'archive' | 'other'
-export type SortField = 'name' | 'created_at' | 'size' | 'type'
+export type SortField = 'name' | 'created_at' | 'size_bytes' | 'updated_at'
 export type SortOrder = 'asc' | 'desc'
 export type Platform = 'ios' | 'android' | 'web'

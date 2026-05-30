@@ -251,3 +251,12 @@ export function getPublicFileUrl(r2Key: string): string {
   if (!baseUrl) return ''
   return `${baseUrl}/${r2Key}`
 }
+
+export async function getSignedDownloadUrl(r2Key: string): Promise<string> {
+  const { data, error } = await supabase.functions.invoke<{ url: string }>(
+    'file-signed-url',
+    { body: { r2_key: r2Key } }
+  )
+  if (error) throw parseSupabaseError(error)
+  return data!.url
+}

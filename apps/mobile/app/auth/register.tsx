@@ -13,6 +13,15 @@ import { analyticsService } from '../../services/analytics'
 import { FormError } from '../../components/forms/FormError'
 import { LoadingButton } from '../../components/ui/LoadingButton'
 import { toast } from '../../lib/toast'
+import Svg, { Polyline } from 'react-native-svg'
+
+function BackChevron() {
+  return (
+    <Svg width={20} height={20} viewBox="0 0 24 24" fill="none" strokeLinecap="round" strokeLinejoin="round">
+      <Polyline points="15 18 9 12 15 6" stroke="#94A3B8" strokeWidth={2} />
+    </Svg>
+  )
+}
 
 export default function RegisterScreen() {
   const [isLoading, setIsLoading] = useState(false)
@@ -49,8 +58,11 @@ export default function RegisterScreen() {
           contentContainerClassName="px-6 py-8"
           keyboardShouldPersistTaps="handled"
         >
-          <TouchableOpacity onPress={() => router.back()} className="mb-8">
-            <Text className="text-white/60 text-base">← Kembali</Text>
+          <TouchableOpacity
+            onPress={() => router.back()}
+            className="w-10 h-10 rounded-full bg-dark-800 items-center justify-center mb-8"
+          >
+            <BackChevron />
           </TouchableOpacity>
 
           <View className="mb-8">
